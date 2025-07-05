@@ -1,0 +1,45 @@
+server:
+  port: 8198
+
+spring:
+  application:
+    name: local_img_bed
+  datasource:
+    url: jdbc:mysql://192.227.138.110:3306/local_img_bed?useSSL=false&serverTimezone=Asia/Shanghai
+    username: local_img_bed
+    password: hfDBnxzcxZFtAPaH
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+mybatis-plus:
+  mapper-locations: classpath:/mapper/*.xml
+  type-aliases-package: com.example.gallery.entity
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+ok:
+  http:
+    connect-timeout: 60
+    read-timeout: 60
+    write-timeout: 60
+    max-idle-connections: 200
+    keep-alive-duration: 300
+
+jwt:
+  secret: "your-256-bit-secret-key-must-be-at-least-32-chars" # 建议长度≥32字符
+  expiration: 86400000 # 令牌有效期24小时（毫秒）
+admin:
+  username: "master"   # 管理员账号
+  password: "s3cr3tP@ss" # 强密码建议包含大小写+数字+符号
+
+image:
+  storage:
+#    root-path: /data/images
+    root-path: D:\images

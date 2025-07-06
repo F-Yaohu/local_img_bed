@@ -1,11 +1,14 @@
 package com.example.local_img_bed.controller;
 
+import com.example.local_img_bed.dto.CategoryDetailDto;
 import com.example.local_img_bed.entity.Category;
 import com.example.local_img_bed.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -36,5 +39,11 @@ public class CategoryController {
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
         categoryService.deleteCategory(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // 查询分类详情
+    @GetMapping("/{id}/sub")
+    public List<Category> getCategorySub(@PathVariable Long id) {
+        return categoryService.getCategorySub(id);
     }
 }

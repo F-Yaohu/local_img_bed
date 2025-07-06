@@ -1,15 +1,19 @@
 package com.example.local_img_bed.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.local_img_bed.dto.CategoryDetailDto;
 import com.example.local_img_bed.entity.Category;
 import com.example.local_img_bed.entity.Image;
 import com.example.local_img_bed.mapper.CategoryMapper;
 import com.example.local_img_bed.mapper.ImageMapper;
+import com.example.local_img_bed.utils.StringUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -25,12 +29,10 @@ public class CategoryService {
     @Transactional
     public Category createCategory(Category category) {
         if (category.getParentId() == null) {
-            category.setParentId(0L); // 根分类
-            category.setPath("/");
+            category.setParentId(1L); // 根分类
         } else {
             Category parent = categoryMapper.selectById(category.getParentId());
             if (parent == null) throw new RuntimeException("父分类不存在");
-            category.setPath(parent.getPath() + parent.getId() + "/");
         }
         category.setCreateTime(LocalDateTime.now());
         categoryMapper.insert(category);
@@ -50,12 +52,6 @@ public class CategoryService {
         // 更新自身
         category.setId(id);
         categoryMapper.updateById(category);
-
-        // 若父分类变更，同步更新子分类路径
-        if (!old.getParentId().equals(category.getParentId())) {
-            String newPath = category.getPath().substring(0, category.getPath().lastIndexOf('/') + 1);
-            categoryMapper.updateSubPath(old.getPath(), newPath);
-        }
     }
 
     /**
@@ -82,5 +78,17 @@ public class CategoryService {
         }
 
         categoryMapper.deleteById(id);
+    }
+
+    /**
+     * 获取分类详情
+     * @param id 分类ID
+     * @return CategoryDetailDto
+     */
+    public List<Category> getCategorySub(Long id) {
+        // 查询所有子分类
+        LambdaQueryWrapper<Category> categoryQuery = new LambdaQueryWrapper<>();
+        categoryQuery.eq(Category::getParentId, id);
+        return categoryMapper.selectList(categoryQuery);
     }
 }

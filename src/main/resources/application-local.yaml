@@ -5,9 +5,9 @@ spring:
   application:
     name: local_img_bed
   datasource:
-    url: jdbc:mysql://192.227.138.110:3306/local_img_bed?useSSL=false&serverTimezone=Asia/Shanghai
-    username: local_img_bed
-    password: hfDBnxzcxZFtAPaH
+    url: jdbc:mysql://127.0.0.1:3306/local_img_bed?useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: c113338158
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:
@@ -41,5 +41,4 @@ admin:
 
 image:
   storage:
-#    root-path: /data/images
     root-path: D:\images

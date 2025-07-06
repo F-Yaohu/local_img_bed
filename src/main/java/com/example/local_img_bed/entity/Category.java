@@ -14,6 +14,5 @@ public class Category {
     private Long id;
     private String name;
     private Long parentId;
-    private String path;
     private LocalDateTime createTime;
 }

@@ -41,5 +41,4 @@ admin:
 
 image:
   storage:
-#    root-path: /data/images
-    root-path: D:\images
+    root-path: /data/images

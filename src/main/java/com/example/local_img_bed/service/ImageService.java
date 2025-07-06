@@ -1,6 +1,7 @@
 package com.example.local_img_bed.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.local_img_bed.dto.ImageUploadDTO;
 import com.example.local_img_bed.entity.Category;
 import com.example.local_img_bed.entity.Image;
@@ -19,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.apache.commons.codec.digest.DigestUtils;
 
 
+import java.awt.print.Pageable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -168,5 +170,19 @@ public class ImageService {
         }
         // 返回原图
         Files.copy(source.toPath(), response.getOutputStream());
+    }
+
+    /**
+     * 根据分类id查询图片分页信息
+     * @param categoryId    分类id
+     * @param page  当前也
+     * @param size  每页图片数量
+     * @return Page<Image>
+     */
+    public Page<Image> queryImageByCategoryId(Long categoryId, int page, int size) {
+        Page<Image> imagePage = new Page<>(page, size);
+        LambdaQueryWrapper<Image> imageQuery = new LambdaQueryWrapper<>();
+        imageQuery.eq(Image::getCategoryId, categoryId);
+        return  imageMapper.selectPage(imagePage, imageQuery);
     }
 }

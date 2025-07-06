@@ -1,6 +1,8 @@
 package com.example.local_img_bed.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.local_img_bed.dto.ImageUploadDTO;
+import com.example.local_img_bed.entity.Image;
 import com.example.local_img_bed.service.ImageService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -46,5 +48,14 @@ public class ImageController {
             HttpServletResponse response) throws IOException {
 
         imageService.loadImageData(id, type, response);
+    }
+
+    @GetMapping("/page/{categoryId}")
+    public Page<Image> getCategoryDetails(
+            @PathVariable Long categoryId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return imageService.queryImageByCategoryId(categoryId, page, size);
     }
 }

@@ -2,6 +2,7 @@ package com.example.local_img_bed.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.local_img_bed.dto.ImageStatsDto;
 import com.example.local_img_bed.dto.ImageUploadDTO;
 import com.example.local_img_bed.entity.Category;
 import com.example.local_img_bed.entity.Image;
@@ -12,6 +13,7 @@ import com.example.local_img_bed.mapper.ThumbnailMapper;
 import com.example.local_img_bed.utils.StringUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,19 +22,23 @@ import org.springframework.web.multipart.MultipartFile;
 import org.apache.commons.codec.digest.DigestUtils;
 
 
-import java.awt.print.Pageable;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class ImageService {
     private final ImageMapper imageMapper;
@@ -42,6 +48,15 @@ public class ImageService {
 
     @Value("${image.storage.root-path}")
     private String rootPath;
+
+    // 创建扩展名到MIME类型的映射（避免硬编码）
+    private static final Map<String, String> MIME_TYPES = Map.of(
+            "jpg", "image/jpeg",
+            "jpeg", "image/jpeg",
+            "gif", "image/gif",
+            "png", "image/png",
+            "pdf", "application/pdf"  // 扩展其他常见类型
+    );
 
     /**
      * 上传原图
@@ -138,27 +153,58 @@ public class ImageService {
      * 加载图片
      * @param imageId   文件id
      * @param type  加载类型
+     * @param dFileName  下载文件名
      * @param response  返回流
      * @throws IOException IO异常
      */
-    public void loadImageData(Long imageId, String type, HttpServletResponse response) throws IOException {
-        // 设置响应类型为图片
-        response.setContentType("image/jpeg");
+    public void loadImageData(Long imageId, String path, String type, String dFileName, HttpServletResponse response) throws IOException {
+        File source = null;
 
-        //查询原图
-        Image image = imageMapper.selectById(imageId);
-        if (null == image) {
-            // 没有该图片
-            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            return;
+        // 检查是否存在图片路劲，如果存在，检查路劲是否正确
+        if(!StringUtil.isEmpty(path)){
+            source = new File(rootPath + path);
+            if (!source.exists()) {
+                // 文件未找到
+                source = null;
+            }
         }
-        // 检查文件是否存在
-        File source = new File(rootPath + image.getStoragePath());
-        if (!source.exists()) {
-            // 文件未找到
-            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            return;
+
+        // 检查上面是否找到图片
+        if (source == null) {
+            //查询原图
+            Image image = imageMapper.selectById(imageId);
+            if (null == image) {
+                // 没有该图片
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+            // 检查文件是否存在
+            source = new File(rootPath + image.getStoragePath());
+            if (!source.exists()) {
+                // 文件未找到
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
         }
+
+        // 检查前端是否想下载
+        if(!StringUtil.isEmpty(dFileName)){
+            response.setContentType("application/octet-stream");
+            response.addHeader("Content-Disposition", "attachment; filename=\""+dFileName+"\"");
+        }else {
+            // 获取文件扩展名
+            String fileName = source.getName();
+            int dotIndex = fileName.lastIndexOf('.');
+            String fileExtension = (dotIndex > 0 && dotIndex < fileName.length() - 1) ?
+                    fileName.substring(dotIndex + 1).toLowerCase() :
+                    "";
+
+            // 设置ContentType，找不到就返回二进制直接下载
+            String contentType = MIME_TYPES.getOrDefault(fileExtension, "application/octet-stream");
+            response.setContentType(contentType);
+        }
+
+
 
         //检查是否需要生成略缩图
         if(!StringUtil.isEmpty(type)){
@@ -184,5 +230,64 @@ public class ImageService {
         LambdaQueryWrapper<Image> imageQuery = new LambdaQueryWrapper<>();
         imageQuery.eq(Image::getCategoryId, categoryId);
         return  imageMapper.selectPage(imagePage, imageQuery);
+    }
+
+    /**
+     * 获取图片统计信息
+     * @return  ImageStatsDto
+     */
+    public ImageStatsDto getStats() {
+        ImageStatsDto imageStatsDto = new ImageStatsDto();
+        // 计算图片总使用空间
+        double imageUsableSpace = 0;
+        // 获取原图信息
+        ImageStatsDto imgSize = imageMapper.getImgSize();
+        if(null != imgSize){
+            imageStatsDto.setTotalImages(imgSize.getTotalImages());
+            imageStatsDto.setTotalImageSize(imgSize.getTotalImageSize());
+            imageUsableSpace+=imgSize.getTotalImageSize();
+        }
+        // 获取略缩图信息
+        ImageStatsDto thumbnailMapperImgSize = thumbnailMapper.getImgSize();
+        if(null != thumbnailMapperImgSize){
+            imageStatsDto.setTotalThumbnails(thumbnailMapperImgSize.getTotalThumbnails());
+            imageStatsDto.setTotalThumbnailSize(thumbnailMapperImgSize.getTotalThumbnailSize());
+            imageUsableSpace+=thumbnailMapperImgSize.getTotalThumbnailSize();
+        }
+
+        // 图片总是用空间
+        imageStatsDto.setImageUsableSpace(imageUsableSpace);
+
+        try {
+            // 获取当前磁盘的 FileStore 对象
+            FileStore store = Files.getFileStore(Paths.get("").toAbsolutePath());
+            double v = 1024.0 * 1024.0;
+            // 获取空间信息
+            long totalSpace = store.getTotalSpace();
+            double totalSpaceMb = totalSpace>0?totalSpace / v:0;
+            // 已使用空间
+            long usableSpace = store.getUsableSpace();
+            double usableSpaceMb = usableSpace>0?usableSpace / v:0;
+            // 未分配空间
+            long unallocatedSpace = store.getUnallocatedSpace();
+            double unallocatedSpaceMb = unallocatedSpace>0?unallocatedSpace / v:0;
+
+            imageStatsDto.setTotalSpace(totalSpaceMb);
+            imageStatsDto.setOtherUsableSpace(usableSpaceMb-imageUsableSpace);
+            imageStatsDto.setUnallocatedSpace(unallocatedSpaceMb);
+        } catch (IOException e) {
+            log.error("获取本地磁盘信息失败，{}", e.getMessage(),e);
+        }
+        return imageStatsDto;
+    }
+
+
+    /**
+     * 获取最近上传的图片
+     * @param size 返回图片数量
+     * @return  近上传的图片
+     */
+    public List<Image> getRecentUploads(int size){
+        return imageMapper.getRecentUploads(size);
     }
 }

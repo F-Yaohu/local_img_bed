@@ -1,6 +1,7 @@
 package com.example.local_img_bed.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.local_img_bed.dto.ImageStatsDto;
 import com.example.local_img_bed.dto.ImageUploadDTO;
 import com.example.local_img_bed.entity.Image;
 import com.example.local_img_bed.service.ImageService;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/images")
@@ -44,10 +46,12 @@ public class ImageController {
     @GetMapping(value = "/view/{id}", produces = {MediaType.IMAGE_JPEG_VALUE, MediaType.IMAGE_PNG_VALUE})
     public void loadImageData(
             @PathVariable Long id,
-            @RequestParam(required = false) String type,
+            String path,
+            String type,
+            String dFileName,
             HttpServletResponse response) throws IOException {
 
-        imageService.loadImageData(id, type, response);
+        imageService.loadImageData(id, path, type, dFileName, response);
     }
 
     @GetMapping("/page/{categoryId}")
@@ -57,5 +61,15 @@ public class ImageController {
             @RequestParam(defaultValue = "10") int size
     ) {
         return imageService.queryImageByCategoryId(categoryId, page, size);
+    }
+
+    @GetMapping("/stats")
+    public ImageStatsDto getStats() {
+        return imageService.getStats();
+    }
+
+    @GetMapping("/recent")
+    public List<Image> getRecentUploads(int size){
+        return imageService.getRecentUploads(size);
     }
 }

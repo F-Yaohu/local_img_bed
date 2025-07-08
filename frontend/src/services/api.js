@@ -63,5 +63,11 @@ export default {
     },
     syncImagesFromOriginalFolder() {
         return apiClient.post('/images/sync-from-original');
+    },
+    batchMoveImages(imageIds, newCategoryId) {
+        return apiClient.put('/images/batch-move', imageIds, { params: { newCategoryId } });
+    },
+    getCategoryTree() {
+        return apiClient.get('/categories/tree');
     }
 };

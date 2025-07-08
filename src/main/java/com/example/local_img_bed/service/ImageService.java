@@ -376,4 +376,22 @@ public class ImageService {
         }
         return syncedCount;
     }
+
+    @Transactional
+    public void batchMoveImages(List<Long> imageIds, Long newCategoryId) {
+        if (imageIds == null || imageIds.isEmpty()) {
+            return;
+        }
+        Category category = categoryMapper.selectById(newCategoryId);
+        if (category == null) {
+            throw new RuntimeException("分类不存在");
+        }
+
+        // Use Mybatis-Plus batch update
+        Image image = new Image();
+        image.setCategoryId(newCategoryId);
+        LambdaQueryWrapper<Image> updateWrapper = new LambdaQueryWrapper<>();
+        updateWrapper.in(Image::getId, imageIds);
+        imageMapper.update(image, updateWrapper);
+    }
 }

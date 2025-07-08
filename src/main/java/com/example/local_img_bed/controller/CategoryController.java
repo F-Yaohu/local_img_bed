@@ -46,4 +46,10 @@ public class CategoryController {
     public List<Category> getCategorySub(@PathVariable Long id) {
         return categoryService.getCategorySub(id);
     }
+
+    // 查询分类树状图
+    @GetMapping("/tree")
+    public ResponseEntity<List<Category>> getCategoryTree() {
+        return ResponseEntity.ok(categoryService.getCategoryTree());
+    }
 }

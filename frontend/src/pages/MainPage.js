@@ -10,6 +10,8 @@ import UploadProgress from '../components/UploadProgress';
 import DeletionProgress from '../components/DeletionProgress';
 import Dashboard from '../components/Dashboard';
 import SettingsModal from '../components/SettingsModal';
+import CategorySelectModal from '../components/CategorySelectModal';
+import ConfirmModal from '../components/ConfirmModal';
 import api from '../services/api';
 
 function MainPage({ config, onConfigSave }) {
@@ -20,6 +22,10 @@ function MainPage({ config, onConfigSave }) {
     const [dashboardData, setDashboardData] = useState({ stats: { totalImages: 0, totalCategories: 0 }, recentUploads: [] });
     const [uploads, setUploads] = useState([]);
     const [deletions, setDeletions] = useState([]);
+    const [selectedImageIds, setSelectedImageIds] = useState(new Set()); // Use Set for efficient lookups
+    const [showCategorySelectModal, setShowCategorySelectModal] = useState(false);
+    const [showMoveConfirmModal, setShowMoveConfirmModal] = useState(false);
+    const [targetCategory, setTargetCategory] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -36,6 +42,8 @@ function MainPage({ config, onConfigSave }) {
             };
             fetchData();
         }
+        // Clear selected images when category changes
+        setSelectedImageIds(new Set());
     }, [selectedCategory.id, refreshKey]);
 
     const handleLogout = () => {
@@ -132,6 +140,41 @@ function MainPage({ config, onConfigSave }) {
         }
     };
 
+    const handleSelectedImagesChange = (newSelectedIds) => {
+        setSelectedImageIds(new Set(newSelectedIds));
+    };
+
+    const handleOpenMoveModal = () => {
+        if (selectedImageIds.size === 0) {
+            toast.info('请选择要移动的图片。');
+            return;
+        }
+        setShowCategorySelectModal(true);
+    };
+
+    const handleCategorySelectedForMove = (category) => {
+        setTargetCategory(category);
+        setShowCategorySelectModal(false);
+        setShowMoveConfirmModal(true);
+    };
+
+    const handleConfirmMove = async () => {
+        if (!targetCategory || selectedImageIds.size === 0) return;
+
+        try {
+            await api.batchMoveImages(Array.from(selectedImageIds), targetCategory.id);
+            toast.success(`成功移动 ${selectedImageIds.size} 张图片到 '${targetCategory.name}'。`);
+            setSelectedImageIds(new Set()); // Clear selection
+            setRefreshKey(oldKey => oldKey + 1); // Refresh image grid
+        } catch (error) {
+            toast.error('移动图片失败。');
+            console.error('Failed to move images:', error);
+        } finally {
+            setShowMoveConfirmModal(false);
+            setTargetCategory(null);
+        }
+    };
+
     const mainStyle = {
         backgroundImage: config.mainBgUrl ? `url(${config.mainBgUrl})` : 'none',
         backgroundSize: 'cover',
@@ -159,14 +202,27 @@ function MainPage({ config, onConfigSave }) {
                             ) : (
                                 <div></div> // 不需要显示，太占空间了
                             )}
-                            {selectedCategory.id !== 1 && (
-                                <Button onClick={() => setShowUploadModal(true)} disabled={!selectedCategory.id}>上传图片</Button>
-                            )}
+                            <div className="d-flex align-items-center">
+                                {selectedCategory.id !== 1 && (
+                                    <Button onClick={handleOpenMoveModal} disabled={selectedImageIds.size === 0} className="me-2">
+                                        移动图片 ({selectedImageIds.size})
+                                    </Button>
+                                )}
+                                {selectedCategory.id !== 1 && (
+                                    <Button onClick={() => setShowUploadModal(true)} disabled={!selectedCategory.id}>上传图片</Button>
+                                )}
+                            </div>
                         </div>
                         {selectedCategory.id === 1 ? (
                             <Dashboard stats={dashboardData.stats} recentUploads={dashboardData.recentUploads} config={config} />
                         ) : (
-                            <ImageGrid key={refreshKey} categoryId={selectedCategory.id} config={config} setDeletions={setDeletions} />
+                            <ImageGrid 
+                                key={refreshKey} 
+                                categoryId={selectedCategory.id} 
+                                config={config} 
+                                setDeletions={setDeletions}
+                                onSelectedImagesChange={handleSelectedImagesChange}
+                            />
                         )}
                     </Col>
                 </Row>
@@ -183,6 +239,18 @@ function MainPage({ config, onConfigSave }) {
                     onHide={() => setShowSettingsModal(false)}
                     config={config}
                     onSave={handleSaveSettings}
+                />
+                <CategorySelectModal
+                    show={showCategorySelectModal}
+                    onHide={() => setShowCategorySelectModal(false)}
+                    onSelectCategory={handleCategorySelectedForMove}
+                />
+                <ConfirmModal
+                    show={showMoveConfirmModal}
+                    onHide={() => setShowMoveConfirmModal(false)}
+                    onConfirm={handleConfirmMove}
+                    title="确认移动图片"
+                    message={`您确定要将选中的 ${selectedImageIds.size} 张图片移动到 "${targetCategory?.name}" 吗？`}
                 />
             </Container>
         </div>

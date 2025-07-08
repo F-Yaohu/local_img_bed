@@ -4,14 +4,11 @@ import { ListGroup, Spinner, Alert, Button } from 'react-bootstrap';
 import CategoryModal from './CategoryModal';
 import ConfirmModal from './ConfirmModal';
 
-function CategoryNode({ category, parent, onSelect, loadChildren, onUpdate }) {
+function CategoryNode({ category, parent, onSelect, onUpdate }) {
     const [expanded, setExpanded] = useState(false);
 
-    const handleExpand = async (e) => {
+    const handleExpand = (e) => {
         e.stopPropagation();
-        if (!expanded) {
-            await loadChildren(category);
-        }
         setExpanded(!expanded);
     };
 
@@ -23,7 +20,7 @@ function CategoryNode({ category, parent, onSelect, loadChildren, onUpdate }) {
     return (
         <>
             <ListGroup.Item style={{ paddingLeft: `${category.level * 20}px`, display: 'flex', alignItems: 'center' }}>
-                {category.hasChildren && (
+                {category.subCategories && category.subCategories.length > 0 && (
                     <span
                         style={{ marginRight: 5, cursor: 'pointer' }}
                         onClick={handleExpand}
@@ -44,7 +41,6 @@ function CategoryNode({ category, parent, onSelect, loadChildren, onUpdate }) {
                     category={sub}
                     parent={category}
                     onSelect={onSelect}
-                    loadChildren={loadChildren}
                     onUpdate={onUpdate}
                 />
             ))}
@@ -52,7 +48,7 @@ function CategoryNode({ category, parent, onSelect, loadChildren, onUpdate }) {
     );
 }
 
-function CategoryTree({ onSelect }) {
+function CategoryTree({ onSelect, refreshKey }) {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -63,53 +59,35 @@ function CategoryTree({ onSelect }) {
     const [confirmShow, setConfirmShow] = useState(false);
     const [categoryToDelete, setCategoryToDelete] = useState(null);
 
-    const fetchRoot = async () => {
+    const setCategoryLevels = (cats, level) => {
+        return cats.map(cat => {
+            const newCat = { ...cat, level };
+            if (newCat.subCategories && newCat.subCategories.length > 0) {
+                newCat.subCategories = setCategoryLevels(newCat.subCategories, level + 1);
+            }
+            return newCat;
+        });
+    };
+
+    const fetchCategoryTree = async () => {
         try {
             setLoading(true);
             setError(null);
-            const res = await api.getCategorySub(1);
-            const rootSubs = (res.data || []).map(sub => ({
-                ...sub,
-                level: 1,
-                hasChildren: true
-            }));
-            setCategories(rootSubs);
+            const res = await api.getCategoryTree();
+            // Assuming root categories are returned directly, set their level to 1
+            const categoriesWithLevels = setCategoryLevels(res.data || [], 1);
+            setCategories(categoriesWithLevels);
         } catch (err) {
             setError('Failed to load categories. Please try again later.');
+            console.error('Error fetching category tree:', err);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchRoot();
-    }, []);
-
-    const loadChildren = async (category) => {
-        if (category.subCategories && category.subCategories.length > 0) return;
-        try {
-            const res = await api.getCategorySub(category.id);
-            const subs = (res.data || []).map(sub => ({
-                ...sub,
-                level: (category.level || 0) + 1,
-                hasChildren: true
-            }));
-            setCategories(prev => {
-                const update = (cats) => cats.map(cat => {
-                    if (cat.id === category.id) {
-                        return { ...cat, subCategories: subs };
-                    }
-                    if (cat.subCategories) {
-                        return { ...cat, subCategories: update(cat.subCategories) };
-                    }
-                    return cat;
-                });
-                return update(prev);
-            });
-        } catch (e) {
-            console.error(e);
-        }
-    };
+        fetchCategoryTree();
+    }, [refreshKey]); // Re-fetch when refreshKey changes
 
     const handleUpdate = (category, mode, parent) => {
         if (mode === 'add') {
@@ -131,7 +109,7 @@ function CategoryTree({ onSelect }) {
     const handleDeleteConfirm = () => {
         if (!categoryToDelete) return;
         api.deleteCategory(categoryToDelete.id).then(() => {
-            fetchRoot(); // Refresh the tree
+            fetchCategoryTree(); // Refresh the tree
             setConfirmShow(false);
             setCategoryToDelete(null);
         }).catch(err => {
@@ -149,7 +127,7 @@ function CategoryTree({ onSelect }) {
 
         promise.then(() => {
             setModalShow(false);
-            fetchRoot(); // Refresh the tree
+            fetchCategoryTree(); // Refresh the tree
         }).catch(err => {
             alert('Error saving category');
         });
@@ -177,7 +155,6 @@ function CategoryTree({ onSelect }) {
                         category={cat}
                         parent={{ id: 1, name: 'Root', level: 0 }}
                         onSelect={onSelect}
-                        loadChildren={loadChildren}
                         onUpdate={handleUpdate}
                     />
                 ))}

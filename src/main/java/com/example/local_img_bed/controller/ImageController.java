@@ -88,4 +88,12 @@ public class ImageController {
             return ResponseEntity.status(500).body("同步图片失败: " + e.getMessage());
         }
     }
+
+    @PutMapping("/batch-move")
+    public ResponseEntity<Void> batchMoveImages(
+            @RequestBody List<Long> imageIds,
+            @RequestParam Long newCategoryId) {
+        imageService.batchMoveImages(imageIds, newCategoryId);
+        return ResponseEntity.ok().build();
+    }
 }

@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import ConfirmModal from './ConfirmModal';
 import './ImageGrid.css';
 
-function ImageGrid({ categoryId, config, setDeletions }) {
+function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelectedImagesChange }) {
     const [images, setImages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -17,12 +17,21 @@ function ImageGrid({ categoryId, config, setDeletions }) {
     const [imageToDelete, setImageToDelete] = useState(null);
     const [showBatchConfirm, setShowBatchConfirm] = useState(false);
     const [imageResolution, setImageResolution] = useState(null);
-    const [selectedImages, setSelectedImages] = useState(new Set());
+
+    // Use selectedImageIds from props, and manage internal state for UI selection
+    const [internalSelectedImages, setInternalSelectedImages] = useState(new Set(selectedImageIds));
 
     useEffect(() => {
         setCurrentPage(1);
-        setSelectedImages(new Set());
+        // When category changes, clear internal selection and notify parent
+        setInternalSelectedImages(new Set());
+        onSelectedImagesChange([]);
     }, [categoryId]);
+
+    // Sync internal selection with prop changes (e.g., when parent clears selection)
+    useEffect(() => {
+        setInternalSelectedImages(new Set(selectedImageIds));
+    }, [selectedImageIds]);
 
     useEffect(() => {
         const fetchImages = async () => {
@@ -70,7 +79,9 @@ function ImageGrid({ categoryId, config, setDeletions }) {
 
         try {
             await api.deleteImage(imageToDelete.id);
-            toast.success('图片删除成功！');
+            toast.success('图片删除成功���');
+            // Also update parent's selected images if the deleted image was selected
+            onSelectedImagesChange(Array.from(selectedImageIds).filter(id => id !== imageToDelete.id));
         } catch (err) {
             setImages(originalImages);
             toast.error('删除图片失败。请再试一次。');
@@ -109,26 +120,29 @@ function ImageGrid({ categoryId, config, setDeletions }) {
     };
 
     const handleSelectImage = (id) => {
-        const newSelection = new Set(selectedImages);
+        const newSelection = new Set(internalSelectedImages);
         if (newSelection.has(id)) {
             newSelection.delete(id);
         } else {
             newSelection.add(id);
         }
-        setSelectedImages(newSelection);
+        setInternalSelectedImages(newSelection);
+        onSelectedImagesChange(Array.from(newSelection)); // Notify parent
     };
 
     const handleSelectAll = (e) => {
         if (e.target.checked) {
             const allImageIds = images.map(img => img.id);
-            setSelectedImages(new Set(allImageIds));
+            setInternalSelectedImages(new Set(allImageIds));
+            onSelectedImagesChange(allImageIds); // Notify parent
         } else {
-            setSelectedImages(new Set());
+            setInternalSelectedImages(new Set());
+            onSelectedImagesChange([]); // Notify parent
         }
     };
 
     const handleDeleteSelected = () => {
-        if (selectedImages.size === 0) {
+        if (internalSelectedImages.size === 0) {
             toast.info('没有选中需要删除的图片。');
             return;
         }
@@ -136,7 +150,7 @@ function ImageGrid({ categoryId, config, setDeletions }) {
     };
 
     const handleConfirmBatchDelete = async () => {
-        const imageIds = Array.from(selectedImages);
+        const imageIds = Array.from(internalSelectedImages);
         setShowBatchConfirm(false);
 
         const newDeletions = imageIds.map(id => ({
@@ -148,8 +162,9 @@ function ImageGrid({ categoryId, config, setDeletions }) {
         try {
             await api.deleteImages(imageIds);
             toast.success(`${imageIds.length} 图片删除成功。`);
-            setImages(images.filter(img => !selectedImages.has(img.id)));
-            setSelectedImages(new Set());
+            setImages(images.filter(img => !internalSelectedImages.has(img.id)));
+            setInternalSelectedImages(new Set()); // Clear internal selection
+            onSelectedImagesChange([]); // Notify parent to clear selection
             setDeletions(prev => prev.map(d => 
                 imageIds.includes(d.id) ? { ...d, status: 'success' } : d
             ));
@@ -205,21 +220,21 @@ function ImageGrid({ categoryId, config, setDeletions }) {
                         type="checkbox"
                         label="全部选中"
                         onChange={handleSelectAll}
-                        checked={selectedImages.size === images.length && images.length > 0}
+                        checked={internalSelectedImages.size === images.length && images.length > 0}
                     />
                 </div>
                 <Button 
                     variant="danger" 
-                    disabled={selectedImages.size === 0}
+                    disabled={internalSelectedImages.size === 0}
                     onClick={handleDeleteSelected}
                 >
-                    批量删除 ({selectedImages.size})
+                    批量删除 ({internalSelectedImages.size})
                 </Button>
             </div>
             <Row>
                 {images.map(img => (
                     <Col md={4} key={img.id} className="mb-3">
-                        <Card className={selectedImages.has(img.id) ? 'selected' : ''}>
+                        <Card className={internalSelectedImages.has(img.id) ? 'selected' : ''}>
                             <div className="card-img-container">
                                 <Card.Img
                                     variant="top"
@@ -231,7 +246,7 @@ function ImageGrid({ categoryId, config, setDeletions }) {
                                 <Form.Check 
                                     type="checkbox"
                                     className="image-checkbox"
-                                    checked={selectedImages.has(img.id)}
+                                    checked={internalSelectedImages.has(img.id)}
                                     onChange={() => handleSelectImage(img.id)}
                                 />
                             </div>
@@ -338,7 +353,7 @@ function ImageGrid({ categoryId, config, setDeletions }) {
                 onHide={() => setShowBatchConfirm(false)}
                 onConfirm={handleConfirmBatchDelete}
                 title="确认批量删除"
-                message={`您确定要删除选中的 ${selectedImages.size} 张图片吗？此操作无法撤消。`}
+                message={`您确定要删除选中的 ${internalSelectedImages.size} 张图片吗？此操作无法撤消。`}
             />
         </>
     );

@@ -13,7 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -108,5 +112,42 @@ public class CategoryService {
             categoryMapper.insert(category);
         }
         return category;
+    }
+
+    /**
+     * 获取完整的分类树状结构
+     * @return 根分类下的所有子分类（包含多级嵌套）
+     */
+    public List<Category> getCategoryTree() {
+        List<Category> allCategories = categoryMapper.selectList(null);
+        Map<Long, Category> categoryMap = new HashMap<>();
+
+        // Populate map and initialize subCategories lists
+        for (Category category : allCategories) {
+            category.setSubCategories(new ArrayList<>()); // Initialize empty list
+            categoryMap.put(category.getId(), category);
+        }
+
+        List<Category> rootCategories = new ArrayList<>();
+        for (Category category : allCategories) {
+            if (category.getParentId() != null && category.getParentId().equals(1L)) { // Assuming 1L is the root parent ID
+                rootCategories.add(category);
+            } else if (category.getParentId() != null && categoryMap.containsKey(category.getParentId())) {
+                // Add to parent's subCategories
+                categoryMap.get(category.getParentId()).getSubCategories().add(category);
+            }
+        }
+
+        // Sort subCategories by name for consistent order (optional)
+        for (Category category : allCategories) {
+            if (category.getSubCategories() != null) {
+                category.getSubCategories().sort(Comparator.comparing(Category::getName));
+            }
+        }
+
+        // Sort root categories
+        rootCategories.sort(Comparator.comparing(Category::getName));
+
+        return rootCategories;
     }
 }

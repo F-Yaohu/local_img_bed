@@ -1,0 +1,10 @@
+.image-grid-card-img {
+    height: 200px; /* Or any fixed height you prefer */
+    object-fit: cover; /* This ensures the image covers the area without distortion */
+    cursor: pointer;   /* Changes the cursor to a pointer to indicate it's clickable */
+}
+
+.image-modal-img {
+    width: 100%;
+    height: auto;
+}

@@ -25,7 +25,7 @@ COPY --from=frontend-builder /app/frontend/build ./src/main/resources/static
 RUN mvn package -DskipTests
 
 # Stage 3: Create the final, minimal runtime image
-FROM openjdk:11-ea-17-jre-slim
+FROM eclipse-temurin:17-jre-alpine-3.21
 WORKDIR /app
 # Copy the executable JAR from the builder stage
 COPY --from=backend-builder /app/target/*.jar app.jar

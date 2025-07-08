@@ -1,0 +1,19 @@
+# Git
+.git
+.gitignore
+
+# Maven
+target/
+.mvn/
+
+# Node
+frontend/node_modules/
+frontend/build/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

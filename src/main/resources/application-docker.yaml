@@ -1,0 +1,44 @@
+server:
+  port: 8080 # 容器内使用8080端口，我们将在docker-compose中映射到主机端口
+
+spring:
+  datasource:
+    # 从环境变量读取完整的数据库连接URL
+    url: ${DB_URL}
+    # 从环境变量读取数据库用户名和密码
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+mybatis-plus:
+  mapper-locations: classpath:/mapper/*.xml
+  type-aliases-package: com.example.gallery.entity
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+jwt:
+  # 从环境变量读取JWT密钥和管理员凭证
+  secret: "${JWT_SECRET}"
+  expiration: 86400000
+
+admin:
+  username: "${ADMIN_USERNAME}"
+  password: "${ADMIN_PASSWORD}"
+
+image:
+  storage:
+    # 这是容器内的图片存储路径，我们会将它映射到主机的一个目录
+    root-path: /data/images
+
+logging:
+  level:
+    com.example.local_img_bed.mapper: debug
+    root: info

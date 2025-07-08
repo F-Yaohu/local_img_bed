@@ -60,5 +60,8 @@ export default {
     },
     updateBaseConfig(data) {
         return apiClient.put('/base/config/save', data);
+    },
+    syncImagesFromOriginalFolder() {
+        return apiClient.post('/images/sync-from-original');
     }
 };

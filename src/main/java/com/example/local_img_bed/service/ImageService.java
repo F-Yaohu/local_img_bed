@@ -23,16 +23,20 @@ import org.apache.commons.codec.digest.DigestUtils;
 
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -43,6 +47,7 @@ public class ImageService {
     private final CategoryMapper categoryMapper;
     private final ThumbnailService thumbnailService;
     private final ThumbnailMapper thumbnailMapper;
+    private final CategoryService categoryService;
 
     @Value("${image.storage.root-path}")
     private String rootPath;
@@ -307,5 +312,68 @@ public class ImageService {
      */
     public List<Image> getRecentUploads(int size){
         return imageMapper.getRecentUploads(size);
+    }
+
+    @Transactional
+    public int syncImagesFromOriginalFolder() throws IOException {
+        Path originalFolderPath = Paths.get(rootPath, "original");
+        if (!Files.exists(originalFolderPath)) {
+            Files.createDirectories(originalFolderPath);
+            log.info("创建 original 文件夹: {}", originalFolderPath);
+            return 0;
+        }
+
+        // 查找或创建“未分类”类别
+        Category uncategorizedCategory = categoryService.findOrCreateByName("未分类", 1L); // 假设1L是根分类ID
+
+        // 获取数据库中所有已存在的图片路径
+        Set<String> existingImagePaths = imageMapper.selectList(null).stream()
+                .map(Image::getStoragePath)
+                .collect(Collectors.toSet());
+
+        int syncedCount = 0;
+        // 遍历 original 文件夹下的所有图片文件
+        try (var stream = Files.walk(originalFolderPath)) {
+            List<Path> imageFiles = stream
+                    .filter(Files::isRegularFile)
+                    .filter(p -> {
+                        String fileName = p.getFileName().toString().toLowerCase();
+                        return fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") ||
+                               fileName.endsWith(".png") || fileName.endsWith(".gif");
+                    })
+                    .toList();
+
+            for (Path filePath : imageFiles) {
+                String relativePath = File.separator + Paths.get(rootPath).relativize(filePath);
+
+                if (!existingImagePaths.contains(relativePath)) {
+                    // 新图片，同步到数据库
+                    Image image = new Image();
+                    image.setOriginalName(filePath.getFileName().toString());
+                    image.setStoragePath(relativePath);
+                    image.setFileSize(Files.size(filePath));
+                    image.setCategoryId(uncategorizedCategory.getId());
+                    image.setCreateTime(LocalDateTime.now());
+
+                    // 计算文件哈希值
+                    try (FileInputStream fis = new FileInputStream(filePath.toFile())) {
+                        image.setHash(DigestUtils.sha256Hex(fis));
+                    }
+
+                    // 获取文件类型
+                    String fileExtension = "";
+                    int dotIndex = filePath.getFileName().toString().lastIndexOf('.');
+                    if (dotIndex > 0 && dotIndex < filePath.getFileName().toString().length() - 1) {
+                        fileExtension = filePath.getFileName().toString().substring(dotIndex + 1).toLowerCase();
+                    }
+                    image.setFileType(MIME_TYPES.getOrDefault(fileExtension, "application/octet-stream"));
+
+                    imageMapper.insert(image);
+                    syncedCount++;
+                    log.info("同步新图片: {}", relativePath);
+                }
+            }
+        }
+        return syncedCount;
     }
 }

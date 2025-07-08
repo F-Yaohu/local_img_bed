@@ -11,4 +11,7 @@ import java.util.List;
 public interface CategoryMapper extends BaseMapper<Category> {
     @Select("SELECT * FROM category WHERE path LIKE CONCAT(#{path}, '%')")
     List<Category> findSubCategories(String path);
+
+    @Select("SELECT * FROM category WHERE name = #{name} AND parent_id = #{parentId} LIMIT 1")
+    Category findByName(String name, Long parentId);
 }

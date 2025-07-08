@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
+import api from '../services/api';
 
 function SettingsModal({ show, onHide, config, onSave }) {
     const [formData, setFormData] = useState(config);
+    const [syncing, setSyncing] = useState(false);
+    const [syncStatus, setSyncStatus] = useState('');
 
     useEffect(() => {
         setFormData(config);
@@ -15,6 +18,20 @@ function SettingsModal({ show, onHide, config, onSave }) {
 
     const handleSave = () => {
         onSave(formData);
+    };
+
+    const handleSyncImages = async () => {
+        setSyncing(true);
+        setSyncStatus('同步中...');
+        try {
+            const response = await api.syncImagesFromOriginalFolder();
+            setSyncStatus(response.data);
+        } catch (error) {
+            console.error('图片同步失败:', error);
+            setSyncStatus('同步失败: ' + (error.response?.data || error.message));
+        } finally {
+            setSyncing(false);
+        }
     };
 
     return (
@@ -85,6 +102,22 @@ function SettingsModal({ show, onHide, config, onSave }) {
                                 onChange={handleChange}
                                 placeholder="主页背景图的URL"
                             />
+                        </Col>
+                    </Form.Group>
+                    <Form.Group as={Row} className="mb-3">
+                        <Form.Label column sm={3}>图片同步</Form.Label>
+                        <Col sm={9}>
+                            <Button
+                                variant="info"
+                                onClick={handleSyncImages}
+                                disabled={syncing}
+                            >
+                                {syncing ? '同步中...' : '手动同步图片'}
+                            </Button>
+                            {syncStatus && <Form.Text className="ms-3">{syncStatus}</Form.Text>}
+                            <Form.Text className="text-muted d-block mt-2">
+                                扫描服务器上 'original' 文件夹下的图片，并同步到数据库中。
+                            </Form.Text>
                         </Col>
                     </Form.Group>
                 </Form>

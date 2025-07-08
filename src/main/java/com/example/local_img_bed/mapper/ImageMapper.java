@@ -23,4 +23,7 @@ public interface ImageMapper extends BaseMapper<Image> {
 
     @Select("select * from image where create_time order by create_time desc limit #{size}")
     List<Image> getRecentUploads(int size);
+
+    @Select("SELECT storage_path FROM image")
+    List<String> selectAllStoragePaths();
 }

@@ -91,4 +91,22 @@ public class CategoryService {
         categoryQuery.eq(Category::getParentId, id);
         return categoryMapper.selectList(categoryQuery);
     }
+
+    /**
+     * 按名称查找或创建分类
+     * @param name 分类名称
+     * @param parentId 父分类ID
+     * @return Category
+     */
+    public Category findOrCreateByName(String name, Long parentId) {
+        Category category = categoryMapper.findByName(name, parentId);
+        if (category == null) {
+            category = new Category();
+            category.setName(name);
+            category.setParentId(parentId);
+            category.setCreateTime(LocalDateTime.now());
+            categoryMapper.insert(category);
+        }
+        return category;
+    }
 }

@@ -78,4 +78,14 @@ public class ImageController {
     public List<Image> getRecentUploads(int size){
         return imageService.getRecentUploads(size);
     }
+
+    @PostMapping("/sync-from-original")
+    public ResponseEntity<String> syncImagesFromOriginalFolder() {
+        try {
+            int syncedCount = imageService.syncImagesFromOriginalFolder();
+            return ResponseEntity.ok("成功同步 " + syncedCount + " 张图片。");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("同步图片失败: " + e.getMessage());
+        }
+    }
 }

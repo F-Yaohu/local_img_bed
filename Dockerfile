@@ -20,7 +20,7 @@ COPY src ./src
 RUN mvn package -DskipTests
 
 # Stage 3: Create the final, minimal runtime image
-FROM registry.cn-hangzhou.aliyuncs.com/library/openjdk:17-jre-slim
+FROM openjdk:11-ea-17-jre-slim
 WORKDIR /app
 # Copy the executable JAR from the builder stage
 COPY --from=backend-builder /app/target/*.jar app.jar

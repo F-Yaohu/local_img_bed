@@ -4,7 +4,6 @@
 
 # Maven
 target/
-.mvn/
 
 # Node
 frontend/node_modules/

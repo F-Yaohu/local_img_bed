@@ -9,14 +9,19 @@ RUN npm run build
 # Stage 2: Build the Spring Boot backend
 FROM maven:3.8-openjdk-17 AS backend-builder
 WORKDIR /app
-# Copy the built frontend assets from the first stage
-COPY --from=frontend-builder /app/frontend/build ./src/main/resources/static
-# Copy the backend source code
+
+# First, copy pom.xml and download dependencies to leverage Docker's layer cache.
+# This layer is only rebuilt when pom.xml changes.
 COPY pom.xml .
+RUN mvn dependency:go-offline
+
+# Then, copy the rest of the source code and the built frontend.
 COPY .mvn ./.mvn
 COPY mvnw .
 COPY src ./src
-# Build the JAR file
+COPY --from=frontend-builder /app/frontend/build ./src/main/resources/static
+
+# Package the application. This will now use the cached dependencies and be much faster.
 RUN mvn package -DskipTests
 
 # Stage 3: Create the final, minimal runtime image

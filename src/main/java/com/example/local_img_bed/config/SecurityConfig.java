@@ -65,10 +65,23 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable) // 禁用 CSRF
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // 允许访问前端静态资源和根路径
+                        .requestMatchers(
+                                "/",
+                                "/index.html",
+                                "/favicon.ico",
+                                "/logo192.png",
+                                "/logo512.png",
+                                "/manifest.json",
+                                "/robots.txt",
+                                "/static/**" // 允许访问 /static/ 目录下的所有内容 (JS, CSS)
+                        ).permitAll()
+                        // 保持你现有的API权限规则
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/images/view/**").permitAll()
                         .requestMatchers("/api/base/config").permitAll()
                         .requestMatchers("/api/**").hasRole("ADMIN")
+                        // 确保所有其他未明确匹配的请求都需要认证
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

@@ -43,6 +43,9 @@ export default {
     deleteImage(id) {
         return apiClient.delete(`/images/${id}`);
     },
+    deleteImages(ids) {
+        return apiClient.delete('/images/batch', { data: ids });
+    },
     moveImage(id, newCategoryId) {
         return apiClient.put(`/images/${id}/move`, {newCategoryId});
     },

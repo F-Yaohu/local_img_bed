@@ -7,6 +7,7 @@ import CategoryTree from '../components/CategoryTree';
 import ImageGrid from '../components/ImageGrid';
 import UploadModal from '../components/UploadModal';
 import UploadProgress from '../components/UploadProgress';
+import DeletionProgress from '../components/DeletionProgress';
 import Dashboard from '../components/Dashboard';
 import SettingsModal from '../components/SettingsModal';
 import api from '../services/api';
@@ -18,6 +19,7 @@ function MainPage({ config, onConfigSave }) {
     const [refreshKey, setRefreshKey] = useState(0);
     const [dashboardData, setDashboardData] = useState({ stats: { totalImages: 0, totalCategories: 0 }, recentUploads: [] });
     const [uploads, setUploads] = useState([]);
+    const [deletions, setDeletions] = useState([]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -122,6 +124,14 @@ function MainPage({ config, onConfigSave }) {
         }
     };
 
+    const handleClearDeletions = (type) => {
+        if (type === 'all') {
+            setDeletions([]);
+        } else if (type === 'completed') {
+            setDeletions(prevDeletions => prevDeletions.filter(d => d.status !== 'success'));
+        }
+    };
+
     const mainStyle = {
         backgroundImage: config.mainBgUrl ? `url(${config.mainBgUrl})` : 'none',
         backgroundSize: 'cover',
@@ -156,7 +166,7 @@ function MainPage({ config, onConfigSave }) {
                         {selectedCategory.id === 1 ? (
                             <Dashboard stats={dashboardData.stats} recentUploads={dashboardData.recentUploads} config={config} />
                         ) : (
-                            <ImageGrid key={refreshKey} categoryId={selectedCategory.id} config={config} />
+                            <ImageGrid key={refreshKey} categoryId={selectedCategory.id} config={config} setDeletions={setDeletions} />
                         )}
                     </Col>
                 </Row>
@@ -167,6 +177,7 @@ function MainPage({ config, onConfigSave }) {
                     onUpload={handleStartUpload}
                 />
                 <UploadProgress uploads={uploads} onRetry={handleRetryUpload} onClear={handleClearUploads} />
+                <DeletionProgress deletions={deletions} onClear={handleClearDeletions} />
                 <SettingsModal
                     show={showSettingsModal}
                     onHide={() => setShowSettingsModal(false)}

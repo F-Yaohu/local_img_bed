@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Row, Col, Card, Button, Spinner, Alert, Modal, Pagination } from 'react-bootstrap';
+import { Row, Col, Card, Button, Spinner, Alert, Modal, Pagination, Form } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import ConfirmModal from './ConfirmModal';
 import './ImageGrid.css';
 
-function ImageGrid({ categoryId, config }) {
+function ImageGrid({ categoryId, config, setDeletions }) {
     const [images, setImages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -15,10 +15,13 @@ function ImageGrid({ categoryId, config }) {
     const [selectedImage, setSelectedImage] = useState(null);
     const [confirmShow, setConfirmShow] = useState(false);
     const [imageToDelete, setImageToDelete] = useState(null);
+    const [showBatchConfirm, setShowBatchConfirm] = useState(false);
     const [imageResolution, setImageResolution] = useState(null);
+    const [selectedImages, setSelectedImages] = useState(new Set());
 
     useEffect(() => {
         setCurrentPage(1);
+        setSelectedImages(new Set());
     }, [categoryId]);
 
     useEffect(() => {
@@ -43,7 +46,7 @@ function ImageGrid({ categoryId, config }) {
                     setTotalPages(1);
                 }
             } catch (err) {
-                setError('Failed to load images. Please select a category or try again.');
+                setError('加载图片失败，请换一个类别或重新尝试。');
                 console.error(err);
             } finally {
                 setLoading(false);
@@ -68,8 +71,6 @@ function ImageGrid({ categoryId, config }) {
         try {
             await api.deleteImage(imageToDelete.id);
             toast.success('图片删除成功！');
-            // Optionally refetch data
-            // fetchImages();
         } catch (err) {
             setImages(originalImages);
             toast.error('删除图片失败。请再试一次。');
@@ -82,13 +83,13 @@ function ImageGrid({ categoryId, config }) {
     const handleImageClick = (image) => {
         setSelectedImage(image);
         setShowModal(true);
-        setImageResolution(null); // 重置分辨率
+        setImageResolution(null);
     };
 
     const handleCloseModal = () => {
         setShowModal(false);
         setSelectedImage(null);
-        setImageResolution(null); // Reset resolution on close
+        setImageResolution(null);
     };
 
     const handleImageLoad = (e) => {
@@ -105,6 +106,60 @@ function ImageGrid({ categoryId, config }) {
             url += `&type=${type}`;
         }
         return url;
+    };
+
+    const handleSelectImage = (id) => {
+        const newSelection = new Set(selectedImages);
+        if (newSelection.has(id)) {
+            newSelection.delete(id);
+        } else {
+            newSelection.add(id);
+        }
+        setSelectedImages(newSelection);
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            const allImageIds = images.map(img => img.id);
+            setSelectedImages(new Set(allImageIds));
+        } else {
+            setSelectedImages(new Set());
+        }
+    };
+
+    const handleDeleteSelected = () => {
+        if (selectedImages.size === 0) {
+            toast.info('没有选中需要删除的图片。');
+            return;
+        }
+        setShowBatchConfirm(true);
+    };
+
+    const handleConfirmBatchDelete = async () => {
+        const imageIds = Array.from(selectedImages);
+        setShowBatchConfirm(false);
+
+        const newDeletions = imageIds.map(id => ({
+            id,
+            status: 'deleting',
+        }));
+        setDeletions(prev => [...prev, ...newDeletions]);
+
+        try {
+            await api.deleteImages(imageIds);
+            toast.success(`${imageIds.length} 图片删除成功。`);
+            setImages(images.filter(img => !selectedImages.has(img.id)));
+            setSelectedImages(new Set());
+            setDeletions(prev => prev.map(d => 
+                imageIds.includes(d.id) ? { ...d, status: 'success' } : d
+            ));
+        } catch (err) {
+            toast.error('无法删除某些图片。');
+            console.error(err);
+            setDeletions(prev => prev.map(d => 
+                imageIds.includes(d.id) ? { ...d, status: 'error' } : d
+            ));
+        }
     };
 
     const renderPagination = () => {
@@ -144,17 +199,42 @@ function ImageGrid({ categoryId, config }) {
 
     return (
         <>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <Form.Check 
+                        type="checkbox"
+                        label="全部选中"
+                        onChange={handleSelectAll}
+                        checked={selectedImages.size === images.length && images.length > 0}
+                    />
+                </div>
+                <Button 
+                    variant="danger" 
+                    disabled={selectedImages.size === 0}
+                    onClick={handleDeleteSelected}
+                >
+                    批量删除 ({selectedImages.size})
+                </Button>
+            </div>
             <Row>
                 {images.map(img => (
                     <Col md={4} key={img.id} className="mb-3">
-                        <Card>
-                            <Card.Img
-                                variant="top"
-                                src={getImageUrl(img, 'medium')}
-                                alt={img.originalName}
-                                className="image-grid-card-img"
-                                onClick={() => handleImageClick(img)}
-                            />
+                        <Card className={selectedImages.has(img.id) ? 'selected' : ''}>
+                            <div className="card-img-container">
+                                <Card.Img
+                                    variant="top"
+                                    src={getImageUrl(img, 'medium')}
+                                    alt={img.originalName}
+                                    className="image-grid-card-img"
+                                    onClick={() => handleImageClick(img)}
+                                />
+                                <Form.Check 
+                                    type="checkbox"
+                                    className="image-checkbox"
+                                    checked={selectedImages.has(img.id)}
+                                    onChange={() => handleSelectImage(img.id)}
+                                />
+                            </div>
                             <Card.Body>
                                 <Button variant="danger" size="sm" onClick={() => handleDeleteClick(img)}>删除</Button>
                                 <span
@@ -251,6 +331,14 @@ function ImageGrid({ categoryId, config }) {
                 onConfirm={handleDelete}
                 title="确认删除"
                 message="您确定要删除此图像吗？此操作无法撤消。"
+            />
+
+            <ConfirmModal
+                show={showBatchConfirm}
+                onHide={() => setShowBatchConfirm(false)}
+                onConfirm={handleConfirmBatchDelete}
+                title="确认批量删除"
+                message={`您确定要删除选中的 ${selectedImages.size} 张图片吗？此操作无法撤消。`}
             />
         </>
     );

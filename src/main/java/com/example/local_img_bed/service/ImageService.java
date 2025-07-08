@@ -28,10 +28,8 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -120,6 +118,26 @@ public class ImageService {
 
         // 删除主记录
         imageMapper.deleteById(imageId);
+    }
+
+    /**
+     * 批量删除图片及关联资源
+     * @param imageIds   图片id列表
+     */
+    @Transactional
+    public void deleteImages(List<Long> imageIds) {
+        if (imageIds == null || imageIds.isEmpty()) {
+            return;
+        }
+
+        for (Long imageId : imageIds) {
+            try {
+                deleteImage(imageId);
+            } catch (IOException e) {
+                log.error("删除失败的图片id: {}", imageId, e);
+                // Decide how to handle partial failures. For now, we log and continue.
+            }
+        }
     }
 
     /**

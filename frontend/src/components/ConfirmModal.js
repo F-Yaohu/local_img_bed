@@ -12,10 +12,10 @@ function ConfirmModal({ show, onHide, onConfirm, title, message }) {
             </Modal.Body>
             <Modal.Footer>
                 <Button variant="secondary" onClick={onHide}>
-                    Cancel
+                    取消
                 </Button>
                 <Button variant="danger" onClick={onConfirm}>
-                    Confirm
+                    确认
                 </Button>
             </Modal.Footer>
         </Modal>

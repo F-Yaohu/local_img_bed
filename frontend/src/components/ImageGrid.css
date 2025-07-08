@@ -8,3 +8,19 @@
     width: 100%;
     height: auto;
 }
+
+.card.selected {
+    border: 2px solid #007bff;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+}
+
+.card-img-container {
+    position: relative;
+}
+
+.image-checkbox {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+}

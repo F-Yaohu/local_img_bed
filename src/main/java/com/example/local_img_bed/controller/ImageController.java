@@ -42,6 +42,12 @@ public class ImageController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/batch")
+    public ResponseEntity<Void> deleteImages(@RequestBody List<Long> imageIds) {
+        imageService.deleteImages(imageIds);
+        return ResponseEntity.noContent().build();
+    }
+
     // 新增图片查看接口
     @GetMapping(value = "/view/{id}", produces = {MediaType.IMAGE_JPEG_VALUE, MediaType.IMAGE_PNG_VALUE})
     public void loadImageData(

@@ -9,11 +9,11 @@ services:
       - "8198:8080" # 将主机的 8198 端口映射到容器的 8080 端口
     environment:
       - DB_URL=${DB_URL} # 从 .env 文件读取数据库 jdbc:mysql://127.0.0.1:3306/local_img_bed?useSSL=false&serverTimezone=Asia/Shanghai
-      - DB_USERNAME=${DB_USERNAME}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - JWT_SECRET=${JWT_SECRET}
-      - ADMIN_USERNAME=${ADMIN_USERNAME}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - DB_USERNAME=${DB_USERNAME}  # 数据库用户名
+      - DB_PASSWORD=${DB_PASSWORD}  # 数据库密码
+      - JWT_SECRET=${JWT_SECRET}  # JWT密钥，建议长度≥32字符
+      - ADMIN_USERNAME=${ADMIN_USERNAME} # 登录页面账号
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}  # 登录页面密码
     volumes:
       - image_data:/data/images # 将上传的图片存储在名为 image_data 的数据卷中
 

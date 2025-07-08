@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { ListGroup, Spinner, Alert, Button } from 'react-bootstrap';
 import CategoryModal from './CategoryModal';
+import ConfirmModal from './ConfirmModal';
 
 function CategoryNode({ category, parent, onSelect, loadChildren, onUpdate }) {
     const [expanded, setExpanded] = useState(false);
@@ -59,6 +60,8 @@ function CategoryTree({ onSelect }) {
     const [currentCategory, setCurrentCategory] = useState(null);
     const [isEdit, setIsEdit] = useState(false);
     const [parentCategory, setParentCategory] = useState(null);
+    const [confirmShow, setConfirmShow] = useState(false);
+    const [categoryToDelete, setCategoryToDelete] = useState(null);
 
     const fetchRoot = async () => {
         try {
@@ -120,14 +123,22 @@ function CategoryTree({ onSelect }) {
             setIsEdit(true);
             setModalShow(true);
         } else if (mode === 'delete') {
-            if (window.confirm(`Are you sure you want to delete ${category.name}?`)) {
-                api.deleteCategory(category.id).then(() => {
-                    fetchRoot(); // Refresh the tree
-                }).catch(err => {
-                    alert('Error deleting category');
-                });
-            }
+            setCategoryToDelete(category);
+            setConfirmShow(true);
         }
+    };
+
+    const handleDeleteConfirm = () => {
+        if (!categoryToDelete) return;
+        api.deleteCategory(categoryToDelete.id).then(() => {
+            fetchRoot(); // Refresh the tree
+            setConfirmShow(false);
+            setCategoryToDelete(null);
+        }).catch(err => {
+            alert('Error deleting category');
+            setConfirmShow(false);
+            setCategoryToDelete(null);
+        });
     };
 
     const handleSave = (categoryData) => {
@@ -177,6 +188,13 @@ function CategoryTree({ onSelect }) {
                 onSave={handleSave}
                 category={isEdit ? currentCategory : null}
                 parentCategory={parentCategory}
+            />
+            <ConfirmModal
+                show={confirmShow}
+                onHide={() => setConfirmShow(false)}
+                onConfirm={handleDeleteConfirm}
+                title="确认删除"
+                message={`您确定要删除类别 "${categoryToDelete?.name}" 吗? 此操作不能撤消。`}
             />
         </>
     );

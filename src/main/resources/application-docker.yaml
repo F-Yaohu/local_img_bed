@@ -24,6 +24,14 @@ mybatis-plus:
     db-config:
       id-type: auto
 
+ok:
+  http:
+    connect-timeout: 60
+    read-timeout: 60
+    write-timeout: 60
+    max-idle-connections: 200
+    keep-alive-duration: 300
+
 jwt:
   # 从环境变量读取JWT密钥和管理员凭证
   secret: "${JWT_SECRET}"

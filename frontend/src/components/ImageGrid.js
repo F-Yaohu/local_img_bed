@@ -3,6 +3,8 @@ import api from '../services/api';
 import { Row, Col, Card, Button, Spinner, Alert, Modal, Pagination, Form } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import ConfirmModal from './ConfirmModal';
+import SimilarImagesModal from './SimilarImagesModal';
+import CategorySelectModal from './CategorySelectModal';
 import './ImageGrid.css';
 
 function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelectedImagesChange }) {
@@ -17,6 +19,10 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
     const [imageToDelete, setImageToDelete] = useState(null);
     const [showBatchConfirm, setShowBatchConfirm] = useState(false);
     const [imageResolution, setImageResolution] = useState(null);
+    const [showSimilarModal, setShowSimilarModal] = useState(false);
+    const [similarImages, setSimilarImages] = useState([]);
+    const [showMoveModal, setShowMoveModal] = useState(false);
+    const [imageToMove, setImageToMove] = useState(null);
 
     // Use selectedImageIds from props, and manage internal state for UI selection
     const [internalSelectedImages, setInternalSelectedImages] = useState(new Set(selectedImageIds));
@@ -88,6 +94,51 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
             console.error(err);
         } finally {
             setImageToDelete(null);
+        }
+    };
+
+    const handleFindSimilarClick = async (image) => {
+        try {
+            const response = await api.findSimilarImages(image.id);
+            setSimilarImages(response.data);
+            setShowSimilarModal(true);
+            if (response.data.length === 0) {
+                toast.info('没有找到相似图片。');
+            } else {
+                toast.success(`找到 ${response.data.length} 张相似图片。`);
+            }
+        } catch (err) {
+            toast.error('查找相似图片失败。');
+            console.error(err);
+        }
+    };
+
+    const handleCloseSimilarModal = () => {
+        setShowSimilarModal(false);
+        setSimilarImages([]);
+    };
+
+    const handleMoveClick = (image) => {
+        setImageToMove(image);
+        setShowMoveModal(true);
+    };
+
+    const handleConfirmMove = async (newCategoryId) => {
+        if (!imageToMove) return;
+
+        try {
+            await api.moveImage(imageToMove.id, newCategoryId);
+            toast.success(`图片 '${imageToMove.originalName}' 移动成功！`);
+            // Remove the moved image from the current grid if it's no longer in this category
+            if (imageToMove.categoryId === categoryId) { // Only remove if it was in the current category
+                setImages(prevImages => prevImages.filter(img => img.id !== imageToMove.id));
+            }
+            handleCloseModal(); // Close the preview modal
+            setShowMoveModal(false); // Close the move modal
+            setImageToMove(null); // Clear image to move
+        } catch (err) {
+            toast.error('移动图片失败。');
+            console.error(err);
         }
     };
 
@@ -252,6 +303,7 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
                             </div>
                             <Card.Body>
                                 <Button variant="danger" size="sm" onClick={() => handleDeleteClick(img)}>删除</Button>
+                                <Button variant="info" size="sm" className="ms-2" onClick={() => handleFindSimilarClick(img)}>查找相似</Button>
                                 <span
                                     style={{
                                         position: 'absolute',
@@ -338,6 +390,41 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
                         </div>
                     )}
                 </Modal.Body>
+                <Modal.Footer>
+                    {selectedImage && (
+                        <>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="me-2"
+                                onClick={() => handleMoveClick(selectedImage)}
+                            >
+                                移动
+                            </Button>
+                            <Button
+                                variant="danger"
+                                size="sm"
+                                className="me-2"
+                                onClick={() => {
+                                    handleDeleteClick(selectedImage);
+                                    // handleCloseModal(); // Removed as per user request
+                                }}
+                            >
+                                删除
+                            </Button>
+                            <Button
+                                variant="info"
+                                size="sm"
+                                onClick={() => {
+                                    handleFindSimilarClick(selectedImage);
+                                    // handleCloseModal(); // Removed as per user request
+                                }}
+                            >
+                                查找相似
+                            </Button>
+                        </>
+                    )}
+                </Modal.Footer>
             </Modal>
 
             <ConfirmModal
@@ -354,6 +441,20 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
                 onConfirm={handleConfirmBatchDelete}
                 title="确认批量删除"
                 message={`您确定要删除选中的 ${internalSelectedImages.size} 张图片吗？此操作无法撤消。`}
+            />
+
+            <SimilarImagesModal
+                show={showSimilarModal}
+                onHide={handleCloseSimilarModal}
+                similarImages={similarImages}
+                config={config}
+            />
+
+            <CategorySelectModal
+                show={showMoveModal}
+                onHide={() => setShowMoveModal(false)}
+                onSelectCategory={handleConfirmMove}
+                currentCategoryId={imageToMove?.categoryId}
             />
         </>
     );

@@ -96,4 +96,12 @@ public class ImageController {
         imageService.batchMoveImages(imageIds, newCategoryId);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/similar/{imageId}")
+    public ResponseEntity<List<Image>> findSimilarImages(
+            @PathVariable Long imageId,
+            @RequestParam(defaultValue = "10") int threshold) {
+        List<Image> similarImages = imageService.findSimilarImages(imageId, threshold);
+        return ResponseEntity.ok(similarImages);
+    }
 }

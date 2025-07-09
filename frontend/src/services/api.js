@@ -69,5 +69,8 @@ export default {
     },
     getCategoryTree() {
         return apiClient.get('/categories/tree');
+    },
+    findSimilarImages(imageId, threshold = 10) {
+        return apiClient.get(`/images/similar/${imageId}?threshold=${threshold}`);
     }
 };

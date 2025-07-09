@@ -98,6 +98,19 @@
             <version>1.15</version>
         </dependency>
 
+        <!-- 感知哈希库 OpenCV -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>opencv-platform</artifactId>
+            <version>4.10.0-1.5.11</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.openpnp</groupId>
+            <artifactId>opencv</artifactId>
+            <version>4.6.0-0</version> <!-- 与本地库版本一致 -->
+        </dependency>
+
         <!-- JWT 依赖 -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

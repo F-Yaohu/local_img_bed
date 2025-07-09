@@ -20,6 +20,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.Size;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
+import java.io.InputStream;
+import org.opencv.core.MatOfByte;
 
 
 import java.io.File;
@@ -62,6 +70,77 @@ public class ImageService {
     );
 
     /**
+     * 计算图片的感知哈希 (pHash)
+     * @param inputStream 图片输入流
+     * @return pHash 字符串
+     * @throws IOException 异常
+     */
+    private String calculatePHash(InputStream inputStream) throws IOException {
+        byte[] bytes = inputStream.readAllBytes();
+        Mat img = Imgcodecs.imdecode(new MatOfByte(bytes), Imgcodecs.IMREAD_GRAYSCALE);
+
+        if (img.empty()) {
+            throw new IOException("无法加载图片或图片为空");
+        }
+
+        Mat resizedImg = new Mat();
+        Imgproc.resize(img, resizedImg, new Size(32, 32));
+
+        resizedImg.convertTo(resizedImg, CvType.CV_32F);
+
+        Mat dct = new Mat();
+        Core.dct(resizedImg, dct);
+
+        Mat dct8x8 = new Mat(dct, new org.opencv.core.Rect(0, 0, 8, 8));
+
+        double total = 0;
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                total += dct8x8.get(i, j)[0];
+            }
+        }
+        total -= dct8x8.get(0, 0)[0]; // Exclude the DC component
+        double avg = total / (8 * 8 - 1);
+
+        StringBuilder pHash = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (i == 0 && j == 0) {
+                    continue;
+                }
+                pHash.append(dct8x8.get(i, j)[0] > avg ? '1' : '0');
+            }
+        }
+
+        img.release();
+        resizedImg.release();
+        dct.release();
+        dct8x8.release();
+
+        return pHash.toString();
+    }
+
+    /**
+     * 计算两个哈希字符串的汉明距离
+     * @param hash1 哈希字符串1
+     * @param hash2 哈希字符串2
+     * @return 汉明距离
+     */
+    private int hammingDistance(String hash1, String hash2) {
+        if (hash1 == null || hash2 == null || hash1.length() != hash2.length()) {
+            // 实际应用中可能需要更健壮的错误处理，例如返回-1或抛出特定异常
+            return Integer.MAX_VALUE; // 返回一个大值表示不匹配或错误
+        }
+        int distance = 0;
+        for (int i = 0; i < hash1.length(); i++) {
+            if (hash1.charAt(i) != hash2.charAt(i)) {
+                distance++;
+            }
+        }
+        return distance;
+    }
+
+    /**
      * 上传原图
      * @param file  上传文件
      * @param categoryId    分类id
@@ -72,14 +151,22 @@ public class ImageService {
         // 1. 计算文件哈希值
         String fileHash = DigestUtils.sha256Hex(file.getInputStream());
 
-        // 2. 检查重复文件
+        // 2. 计算感知哈希值
+        String pHash = null;
+        try {
+            pHash = calculatePHash(file.getInputStream());
+        } catch (Exception e) {
+            log.error("计算感知哈希失败: {}", e.getMessage(), e);
+        }
+
+        // 3. 检查重复文件
         LambdaQueryWrapper<Image> query = new LambdaQueryWrapper<>();
         query.eq(Image::getHash, fileHash);
         Image image = imageMapper.selectOne(query);
 
         if (image == null) {
-            // 3. 存储原始图片
-            image = saveOriginalFile(file, categoryId, fileHash);
+            // 4. 存储原始图片
+            image = saveOriginalFile(file, categoryId, fileHash, pHash);
             imageMapper.insert(image);
         }
 
@@ -153,7 +240,7 @@ public class ImageService {
      * @return  返回封装结果
      * @throws IOException  异常
      */
-    private Image saveOriginalFile(MultipartFile file, Long categoryId, String hash) throws IOException {
+    private Image saveOriginalFile(MultipartFile file, Long categoryId, String hash, String pHash) throws IOException {
         String datePath = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         String fileName = UUID.randomUUID() + "." + file.getOriginalFilename();
         Path storagePath = Paths.get(rootPath, "original", datePath, fileName);
@@ -168,6 +255,7 @@ public class ImageService {
         image.setFileSize(file.getSize());
         image.setCategoryId(categoryId);
         image.setHash(hash);
+        image.setPHash(pHash);
         return image;
     }
 
@@ -360,6 +448,13 @@ public class ImageService {
                         image.setHash(DigestUtils.sha256Hex(fis));
                     }
 
+                    // 计算感知哈希值
+                    try (FileInputStream fis = new FileInputStream(filePath.toFile())) {
+                        image.setPHash(calculatePHash(fis));
+                    } catch (Exception e) {
+                        log.error("同步图片时计算感知哈希失败: {}", filePath, e);
+                    }
+
                     // 获取文件类型
                     String fileExtension = "";
                     int dotIndex = filePath.getFileName().toString().lastIndexOf('.');
@@ -393,5 +488,28 @@ public class ImageService {
         LambdaQueryWrapper<Image> updateWrapper = new LambdaQueryWrapper<>();
         updateWrapper.in(Image::getId, imageIds);
         imageMapper.update(image, updateWrapper);
+    }
+
+    /**
+     * 查找相似图片
+     * @param imageId   图片id
+     * @param threshold 汉明距离阈值
+     * @return  相似图片列表
+     */
+    public List<Image> findSimilarImages(Long imageId, int threshold) {
+        Image targetImage = imageMapper.selectById(imageId);
+        if (targetImage == null || StringUtil.isEmpty(targetImage.getPHash())) {
+            return List.of(); // 或者抛出异常，取决于业务需求
+        }
+
+        String targetPHash = targetImage.getPHash();
+        List<Image> allImages = imageMapper.selectList(null); // 获取所有图片
+
+        return allImages.stream()
+                .filter(img -> !img.getId().equals(imageId) && !StringUtil.isEmpty(img.getPHash())) // 排除自身和没有pHash的图片
+                .filter(img -> {
+                    return hammingDistance(targetPHash, img.getPHash()) <= threshold;
+                })
+                .collect(Collectors.toList());
     }
 }

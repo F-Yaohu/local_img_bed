@@ -18,5 +18,6 @@ public class Image {
     private Long fileSize;
     private Long categoryId;
     private String hash;
+    private String pHash;
     private LocalDateTime createTime;
 }

@@ -54,14 +54,10 @@ const Dashboard = ({ stats, recentUploads, config }) => {
 
   const toMB = (bit) => (bit / 1024 / 1024).toFixed(2);
   const toGB = (mb) => (mb / 1024).toFixed(2);
-  
-  const getImageUrl = (image, type) => {
+
+  const getImageUrl = (img, type) => {
     const base = config.imgBaseUrl || '';
-    let url = `${base}/api/images/view/${image.id}?path=${encodeURIComponent(image.storagePath)}`;
-     if (type) {
-        url += `&type=${type}`;
-    }
-    return url;
+    return `${base}/api/images/thumbnail/${img.id}/${type}?path=${encodeURIComponent(img.url.replace('/images-static/', ''))}`;
   };
 
   return (
@@ -163,7 +159,7 @@ const Dashboard = ({ stats, recentUploads, config }) => {
           {selectedImage && (
             <div className="image-container">
               <img
-                src={getImageUrl(selectedImage)}
+                src={selectedImage.url}
                 alt={selectedImage.originalName}
                 onLoad={handleImageLoad}
               />
@@ -177,18 +173,14 @@ const Dashboard = ({ stats, recentUploads, config }) => {
               <p><strong>大小:</strong> {toMB(selectedImage.fileSize)} MB</p>
               <p><strong>分辨率:</strong> {imageResolution || '加载中...'}</p>
               <p><strong>上传时间:</strong> {new Date(selectedImage.createTime).toLocaleString()}</p>
-              <a href={getImageUrl(selectedImage)+'&dFileName='+selectedImage.originalName} download={selectedImage.originalName} className="btn btn-primary w-100 mt-3">
+              <a
+                  href={selectedImage.url}
+                  download={selectedImage.originalName}
+                  className="btn btn-primary w-100 mt-3"
+              >
                 下载原图
               </a>
               <div className="link-container">
-                <strong>原图:</strong>
-                <input
-                  type="text"
-                  readOnly
-                  value={getImageUrl(selectedImage)}
-                  className="form-control form-control-sm mt-1"
-                  onClick={(e) => e.target.select()}
-                />
                 <strong>头像:</strong>
                 <input
                   type="text"
@@ -214,7 +206,6 @@ const Dashboard = ({ stats, recentUploads, config }) => {
                   onClick={(e) => e.target.select()}
                 />
               </div>
-              
             </div>
           )}
         </Modal.Body>

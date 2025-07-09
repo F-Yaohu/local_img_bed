@@ -49,47 +49,46 @@ public class ThumbnailService {
     /**
      * 生成略缩图，如果存在直接返回文件
      * @param source    源文件
-     * @param type  类型
+     * @param size  大小
      * @param originalId    原图id
-     * @return  返回略缩图文件
+     * @return  返回略缩图相对路劲
      */
-    public File generateThumbnail(File source, String type, Long originalId) {
-        ThumbRule rule = thumbnailRules.get(type);
+    public String generateThumbnail(File source, String size, Long originalId) throws IOException {
+        ThumbRule rule = thumbnailRules.get(size);
+        // 如果规则不存在，直接返回原图
         if(null==rule){
             return null;
         }
 
-        try {
+        //拼接图片路劲，检查文件是否存在
+        String originalFileName = rule.getPrefix() + source.getName();
+        String thumbnailRelativePath = Paths.get("thumbnails", size, originalFileName).toString();
+        Path thumbnailAbsolutePath = Paths.get(rootPath, thumbnailRelativePath);
+
+        // 检查文件是否存在
+        if (!Files.exists(thumbnailAbsolutePath)) {
+            // 检查图片大小，如果原图小于等于目标宽度，直接返回原图
             BufferedImage image = ImageIO.read(source);
-            // 如果原图小于等于目标宽度，直接返回原图
             if (image.getWidth() <= rule.getWidth()) {
                 return null;
             }
 
-            //生成图片
-            String thumbName = rule.getPrefix() + source.getName();
-            Path thumbPath = Paths.get(rootPath, "thumbnail", type, thumbName);
+            // 创建目录
+            Files.createDirectories(thumbnailAbsolutePath.getParent());
+            File file = thumbnailAbsolutePath.toFile();
 
-            File file = thumbPath.toFile();
+            // 使用Thumbnail生成缩略图
+            Thumbnails.of(image)
+                    .width(rule.getWidth())
+                    .keepAspectRatio(true)
+                    .outputQuality(rule.getQuality())
+                    .toFile(file);
 
-            // 检查是否存在文件
-            if(!Files.exists(thumbPath)){
-                // 创建目录
-                Files.createDirectories(thumbPath.getParent());
-                // 使用Thumbnail生成缩略图
-                Thumbnails.of(image)
-                        .width(rule.getWidth())
-                        .keepAspectRatio(true)
-                        .outputQuality(rule.getQuality())
-                        .toFile(file);
-
-                // 保存略缩图到数据库
-                saveThumbnailImage(file,type,originalId);
-            }
-            return file;
-        } catch (IOException e) {
-            return null;
+            // 保存略缩图到数据库
+            saveThumbnailImage(file,size,originalId);
         }
+        // 返回相对路劲
+        return thumbnailRelativePath;
     }
 
 

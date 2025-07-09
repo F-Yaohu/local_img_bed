@@ -1,22 +1,23 @@
 package com.example.local_img_bed.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.local_img_bed.dto.ImageDTO;
 import com.example.local_img_bed.dto.ImageStatsDto;
 import com.example.local_img_bed.dto.ImageUploadDTO;
-import com.example.local_img_bed.entity.Image;
 import com.example.local_img_bed.service.ImageService;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/images")
 @RequiredArgsConstructor
@@ -48,6 +49,29 @@ public class ImageController {
     public ResponseEntity<Void> deleteImages(@RequestBody List<Long> imageIds) {
         imageService.deleteImages(imageIds);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/thumbnail/{id}/{size}")
+    public ResponseEntity<Object> getThumbnail(
+            @PathVariable Long id,
+            @PathVariable String size,
+            @RequestParam String path) {
+        try {
+            String thumbnailPath = imageService.getOrCreateThumbnailAndGetStaticPath(id,size, path);
+            String staticUrl = "/images-static/" + thumbnailPath;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setLocation(new URI(staticUrl));
+            return new ResponseEntity<>(headers, HttpStatus.FOUND); // HTTP 302
+        } catch (Exception e) {
+            // Log the error with more details
+            log.error("Error processing thumbnail for path '{}' with size '{}': {}", path, size, e.getMessage(), e);
+            // Return a 404 Not Found for client errors or 500 for server errors
+            if (e instanceof IllegalArgumentException || e instanceof IOException) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @GetMapping("/page/{categoryId}")

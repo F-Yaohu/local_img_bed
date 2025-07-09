@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, {useEffect, useState} from 'react';
 import api from '../services/api';
-import { Row, Col, Card, Button, Spinner, Alert, Modal, Pagination, Form } from 'react-bootstrap';
-import { toast } from 'react-toastify';
+import {Alert, Button, Card, Col, Form, Modal, Pagination, Row, Spinner} from 'react-bootstrap';
+import {toast} from 'react-toastify';
 import ConfirmModal from './ConfirmModal';
 import SimilarImagesModal from './SimilarImagesModal';
 import CategorySelectModal from './CategorySelectModal';
@@ -185,7 +185,10 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
 
     const toMB = (bit) => (bit / 1024 / 1024).toFixed(2);
 
-    
+    const getImageUrl = (img, type) => {
+        const base = config.imgBaseUrl || '';
+        return `${base}/api/images/thumbnail/${img.id}/${type}?path=${encodeURIComponent(img.url.replace('/images-static/', ''))}`;
+    };
 
     const handleSelectImage = (id) => {
         const newSelection = new Set(internalSelectedImages);
@@ -306,7 +309,7 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
                             <div className="card-img-container">
                                 <Card.Img
                                     variant="top"
-                                    src={img.url}
+                                    src={getImageUrl(img,'medium')}
                                     alt={img.originalName}
                                     className="image-grid-card-img"
                                     onClick={() => handleImageClick(img)}
@@ -371,11 +374,27 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
                                 下载原图
                             </a>
                             <div className="link-container">
-                                <strong>原图:</strong>
+                                <strong>头像:</strong>
                                 <input
                                     type="text"
                                     readOnly
-                                    value={selectedImage.url}
+                                    value={getImageUrl(selectedImage, 'small')}
+                                    className="form-control form-control-sm mt-1"
+                                    onClick={e => e.target.select()}
+                                />
+                                <strong>中等:</strong>
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={getImageUrl(selectedImage, 'medium')}
+                                    className="form-control form-control-sm mt-1"
+                                    onClick={e => e.target.select()}
+                                />
+                                <strong>大图:</strong>
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={getImageUrl(selectedImage, 'large')}
                                     className="form-control form-control-sm mt-1"
                                     onClick={e => e.target.select()}
                                 />

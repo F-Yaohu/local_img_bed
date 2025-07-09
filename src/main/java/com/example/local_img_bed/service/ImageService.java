@@ -3,6 +3,7 @@ package com.example.local_img_bed.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import java.util.Map;
 import com.example.local_img_bed.dto.ImageDTO;
 import com.example.local_img_bed.dto.ImageStatsDto;
 import com.example.local_img_bed.dto.ImageUploadDTO;
@@ -43,7 +44,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -121,6 +121,33 @@ public class ImageService {
         dct8x8.release();
 
         return pHash.toString();
+    }
+
+    /**
+     * 获取或创建略缩图
+     * @param id    原图od
+     * @param size  略缩图大小
+     * @param originalImageRelativePath 原图相对路径
+     * @return  图片相对路径，可能是原图，防止略缩图获取失败
+     * @throws IOException  异常
+     */
+    public String getOrCreateThumbnailAndGetStaticPath(Long id, String size, String originalImageRelativePath) throws IOException {
+        // 检查路径是否异常，遍历攻击
+        Path originalImagePath = Paths.get(rootPath, originalImageRelativePath).toAbsolutePath();
+        if (!originalImagePath.startsWith(Paths.get(rootPath).toAbsolutePath())) {
+            throw new IOException("Path traversal attempt detected: " + originalImageRelativePath);
+        }
+        // 检查文件是否存在
+        if (!Files.exists(originalImagePath)) {
+            throw new IOException("Original image not found at path: " + originalImageRelativePath);
+        }
+        // 获取略缩图路劲
+        String returnPath = thumbnailService.generateThumbnail(originalImagePath.toFile(), size, id);
+        // 如果没有获取到略缩图，返回原图
+        if(null == returnPath){
+            returnPath = originalImageRelativePath;
+        }
+        return returnPath.replace(File.separator, "/");
     }
 
     /**

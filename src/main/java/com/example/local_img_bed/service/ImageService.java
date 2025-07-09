@@ -401,9 +401,17 @@ public class ImageService {
         // 查找或创建“未分类”类别
         Category uncategorizedCategory = categoryService.findOrCreateByName("未分类", 1L); // 假设1L是根分类ID
 
-        // 获取数据库中所有已存在的图片路径
-        Set<String> existingImagePaths = imageMapper.selectList(null).stream()
+        // 获取数据库中所有已存在的图片
+        List<Image> images = imageMapper.selectList(null);
+
+        // 过滤出所有路径
+        Set<String> existingImagePaths = images.stream()
                 .map(Image::getStoragePath)
+                .collect(Collectors.toSet());
+
+        // 过滤出所有hash
+        Set<String> existingImageHashs = images.stream()
+                .map(Image::getHash)
                 .collect(Collectors.toSet());
 
         int syncedCount = 0;
@@ -433,6 +441,13 @@ public class ImageService {
                     // 计算文件哈希值
                     try (FileInputStream fis = new FileInputStream(filePath.toFile())) {
                         image.setHash(DigestUtils.sha256Hex(fis));
+
+                        // 如果档期按图片已存在，不保存
+                        if(existingImageHashs.contains(image.getHash())){
+                            continue;
+                        }
+                        // 防止后续有重复文件
+                        existingImageHashs.add(image.getHash());
                     }
 
                     // 计算感知哈希值

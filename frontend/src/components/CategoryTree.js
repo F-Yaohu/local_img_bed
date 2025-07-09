@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { ListGroup, Spinner, Alert, Button } from 'react-bootstrap';
+import { ListGroup, Spinner, Alert, Button, Dropdown } from 'react-bootstrap';
 import CategoryModal from './CategoryModal';
 import ConfirmModal from './ConfirmModal';
 
@@ -32,8 +32,16 @@ function CategoryNode({ category, parent, onSelect, onUpdate }) {
                     {category.name}
                 </span>
                 <Button variant="outline-primary" size="sm" onClick={(e) => { e.stopPropagation(); onUpdate(category, 'add', category); }}>+</Button>
-                <Button variant="outline-secondary" size="sm" className="ml-2" onClick={(e) => { e.stopPropagation(); onUpdate(category, 'edit', parent); }}>编辑</Button>
-                <Button variant="outline-danger" size="sm" className="ml-2" onClick={(e) => { e.stopPropagation(); onUpdate(category, 'delete'); }}>删除</Button>
+                <Dropdown onClick={(e) => e.stopPropagation()}>
+                    <Dropdown.Toggle variant="outline-secondary" size="sm" className="ml-2">
+                        ...
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu>
+                        <Dropdown.Item onClick={(e) => { e.stopPropagation(); onUpdate(category, 'edit', parent); }}>编辑</Dropdown.Item>
+                        <Dropdown.Item onClick={(e) => { e.stopPropagation(); onUpdate(category, 'delete'); }}>删除</Dropdown.Item>
+                    </Dropdown.Menu>
+                </Dropdown>
             </ListGroup.Item>
             {expanded && category.subCategories && category.subCategories.map(sub => (
                 <CategoryNode
@@ -58,6 +66,7 @@ function CategoryTree({ onSelect, refreshKey }) {
     const [parentCategory, setParentCategory] = useState(null);
     const [confirmShow, setConfirmShow] = useState(false);
     const [categoryToDelete, setCategoryToDelete] = useState(null);
+    const [errorModal, setErrorModal] = useState({ show: false, message: '' });
 
     const setCategoryLevels = (cats, level) => {
         return cats.map(cat => {
@@ -113,9 +122,11 @@ function CategoryTree({ onSelect, refreshKey }) {
             setConfirmShow(false);
             setCategoryToDelete(null);
         }).catch(err => {
-            alert('Error deleting category');
-            setConfirmShow(false);
-            setCategoryToDelete(null);
+            const errorMessage = err.response && err.response.data && err.response.data.message
+                ? err.response.data.message
+                : '删除分类时出错';
+            setConfirmShow(false); // Hide the confirmation modal
+            setErrorModal({ show: true, message: errorMessage }); // Show the error modal
         });
     };
 
@@ -172,6 +183,15 @@ function CategoryTree({ onSelect, refreshKey }) {
                 onConfirm={handleDeleteConfirm}
                 title="确认删除"
                 message={`您确定要删除类别 "${categoryToDelete?.name}" 吗? 此操作不能撤消。`}
+            />
+            <ConfirmModal
+                show={errorModal.show}
+                onHide={() => setErrorModal({ show: false, message: '' })}
+                onConfirm={() => setErrorModal({ show: false, message: '' })}
+                title="操作失败"
+                message={errorModal.message}
+                showCancelButton={false}
+                confirmButtonText="好的"
             />
         </>
     );

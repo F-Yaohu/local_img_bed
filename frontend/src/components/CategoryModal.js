@@ -46,10 +46,10 @@ function CategoryModal({ show, onHide, onSave, category, parentCategory }) {
             </Modal.Body>
             <Modal.Footer>
                 <Button variant="secondary" onClick={onHide}>
-                    Close
+                    关闭
                 </Button>
                 <Button variant="primary" onClick={handleSave}>
-                    Save
+                    保存
                 </Button>
             </Modal.Footer>
         </Modal>

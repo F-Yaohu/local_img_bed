@@ -118,4 +118,22 @@ public class ImageController {
         List<ImageDTO> similarImages = imageService.findSimilarImages(imageId, threshold);
         return ResponseEntity.ok(similarImages);
     }
+
+    @GetMapping("/random")
+    public ResponseEntity<Object> getRandomImage(@RequestParam(required = false) Long categoryId) {
+        try {
+            ImageDTO randomImage = imageService.getRandomImage(categoryId);
+            if (randomImage != null) {
+                String staticUrl = randomImage.getUrl();
+                HttpHeaders headers = new HttpHeaders();
+                headers.setLocation(new URI(staticUrl));
+                return new ResponseEntity<>(headers, HttpStatus.FOUND); // HTTP 302
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            log.error("Error getting random image: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }

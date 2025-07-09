@@ -498,4 +498,17 @@ public class ImageService {
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * 获取随机图片
+     * @param categoryId 分类ID (可选)
+     * @return 随机图片DTO
+     */
+    public ImageDTO getRandomImage(Long categoryId) {
+        Image randomImage = imageMapper.getRandomImage(categoryId);
+        if (randomImage != null) {
+            return convertToDto(randomImage);
+        }
+        return null;
+    }
 }

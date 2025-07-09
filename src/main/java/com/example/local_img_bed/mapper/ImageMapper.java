@@ -26,4 +26,15 @@ public interface ImageMapper extends BaseMapper<Image> {
 
     @Select("SELECT storage_path FROM image")
     List<String> selectAllStoragePaths();
+
+    @Select("<script>" +
+            "SELECT * FROM image " +
+            "<where>" +
+            "<if test=\"categoryId != null\">" +
+            "category_id = #{categoryId}" +
+            "</if>" +
+            "</where>" +
+            "ORDER BY RAND() LIMIT 1" +
+            "</script>")
+    Image getRandomImage(@Param("categoryId") Long categoryId);
 }

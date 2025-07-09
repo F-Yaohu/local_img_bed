@@ -30,6 +30,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}  # JWT密钥，建议长度≥32字符
       - ADMIN_USERNAME=${ADMIN_USERNAME} # 登录页面账号
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}  # 登录页面密码
+      - MAX_FILE_SIZE=10MB  # 最大上传文件大小
+      - MAZ_REQUEST_SIZE=20MB  # 最大传输大小
     volumes:
       - image_data:/data/images # 将上传的图片存储在名为 image_data 的数据卷中
     depends_on:

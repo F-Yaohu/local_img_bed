@@ -13,6 +13,11 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql # 持久化 MySQL 数据
       - ./mysql-init-scripts:/docker-entrypoint-initdb.d # 挂载初始化脚本
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "local_img_bed_user", "-p${MYSQL_PASSWORD}"]
+      timeout: 20s
+      retries: 10
+      interval: 3s
 
   app:
     build:
@@ -24,7 +29,7 @@ services:
       - "8198:8080" # 将主机的 8198 端口映射到容器的 8080 端口
     environment:
       # 数据库连接信息现在指向 Docker Compose 网络中的 mysql 服务
-      - DB_URL=jdbc:mysql://mysql:13336/local_img_bed?useSSL=false&serverTimezone=Asia/Shanghai
+      - DB_URL=jdbc:mysql://mysql:3306/local_img_bed?useSSL=false&serverTimezone=Asia/Shanghai
       - DB_USERNAME=local_img_bed_user
       - DB_PASSWORD=your_mysql_password
       - JWT_SECRET=${JWT_SECRET}  # JWT密钥，建议长度≥32字符
@@ -33,7 +38,8 @@ services:
     volumes:
       - image_data:/data/images # 将上传的图片存储在名为 image_data 的数据卷中
     depends_on:
-      - mysql # 确保 mysql 服务在 app 服务之前启动
+      mysql:
+        condition: service_healthy
 
 volumes:
   image_data:

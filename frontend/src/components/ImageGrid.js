@@ -185,14 +185,7 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
 
     const toMB = (bit) => (bit / 1024 / 1024).toFixed(2);
 
-    const getImageUrl = (image, type) => {
-        const base = config.imgBaseUrl || '';
-        let url = `${base}/api/images/view/${image.id}?path=${encodeURIComponent(image.storagePath)}`;
-        if (type) {
-            url += `&type=${type}`;
-        }
-        return url;
-    };
+    
 
     const handleSelectImage = (id) => {
         const newSelection = new Set(internalSelectedImages);
@@ -313,7 +306,7 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
                             <div className="card-img-container">
                                 <Card.Img
                                     variant="top"
-                                    src={getImageUrl(img, 'medium')}
+                                    src={img.url}
                                     alt={img.originalName}
                                     className="image-grid-card-img"
                                     onClick={() => handleImageClick(img)}
@@ -355,7 +348,7 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
                     {selectedImage && (
                         <div className="image-container">
                             <img
-                                src={getImageUrl(selectedImage)}
+                                src={selectedImage.url}
                                 alt={selectedImage.originalName}
                                 className="image-modal-img"
                                 onLoad={handleImageLoad}
@@ -371,7 +364,7 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
                             <p><strong>分辨率:</strong> {imageResolution || '加载中...'}</p>
                             <p><strong>上传时间:</strong> {new Date(selectedImage.createTime).toLocaleString()}</p>
                             <a
-                                href={getImageUrl(selectedImage) + (selectedImage.originalName ? `&dFileName=${selectedImage.originalName}` : '')}
+                                href={selectedImage.url}
                                 download={selectedImage.originalName}
                                 className="btn btn-primary w-100 mt-3"
                             >
@@ -382,31 +375,7 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
                                 <input
                                     type="text"
                                     readOnly
-                                    value={getImageUrl(selectedImage)}
-                                    className="form-control form-control-sm mt-1"
-                                    onClick={e => e.target.select()}
-                                />
-                                <strong>头像:</strong>
-                                <input
-                                    type="text"
-                                    readOnly
-                                    value={getImageUrl(selectedImage, 'small')}
-                                    className="form-control form-control-sm mt-1"
-                                    onClick={e => e.target.select()}
-                                />
-                                <strong>中等:</strong>
-                                <input
-                                    type="text"
-                                    readOnly
-                                    value={getImageUrl(selectedImage, 'medium')}
-                                    className="form-control form-control-sm mt-1"
-                                    onClick={e => e.target.select()}
-                                />
-                                <strong>大图:</strong>
-                                <input
-                                    type="text"
-                                    readOnly
-                                    value={getImageUrl(selectedImage, 'large')}
+                                    value={selectedImage.url}
                                     className="form-control form-control-sm mt-1"
                                     onClick={e => e.target.select()}
                                 />

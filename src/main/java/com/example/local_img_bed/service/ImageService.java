@@ -1,7 +1,9 @@
 package com.example.local_img_bed.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.local_img_bed.dto.ImageDTO;
 import com.example.local_img_bed.dto.ImageStatsDto;
 import com.example.local_img_bed.dto.ImageUploadDTO;
 import com.example.local_img_bed.entity.Category;
@@ -45,6 +47,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.function.Function;
 
 
 @Service
@@ -260,73 +263,25 @@ public class ImageService {
     }
 
 
-    /**
-     * 加载图片
-     * @param imageId   文件id
-     * @param type  加载类型
-     * @param dFileName  下载文件名
-     * @param response  返回流
-     * @throws IOException IO异常
-     */
-    public void loadImageData(Long imageId, String path, String type, String dFileName, HttpServletResponse response) throws IOException {
-        File source = null;
+    
 
-        // 检查是否存在图片路劲，如果存在，检查路劲是否正确
-        if(!StringUtil.isEmpty(path)){
-            source = new File(rootPath + path);
-            if (!source.exists()) {
-                // 文件未找到
-                source = null;
-            }
-        }
+    private ImageDTO convertToDto(Image image) {
+        ImageDTO dto = new ImageDTO();
+        dto.setId(image.getId());
+        dto.setOriginalName(image.getOriginalName());
+        dto.setFileType(image.getFileType());
+        dto.setFileSize(image.getFileSize());
+        dto.setCategoryId(image.getCategoryId());
+        dto.setHash(image.getHash());
+        dto.setPHash(image.getPHash());
+        dto.setCreateTime(image.getCreateTime());
 
-        // 检查上面是否找到图片
-        if (source == null) {
-            //查询原图
-            Image image = imageMapper.selectById(imageId);
-            if (null == image) {
-                // 没有该图片
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                return;
-            }
-            // 检查文件是否存在
-            source = new File(rootPath + image.getStoragePath());
-            if (!source.exists()) {
-                // 文件未找到
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                return;
-            }
-        }
-
-        // 检查前端是否想下载
-        if(!StringUtil.isEmpty(dFileName)){
-            response.setContentType("application/octet-stream");
-            response.addHeader("Content-Disposition", "attachment; filename=\""+dFileName+"\"");
-        }else {
-            // 获取文件扩展名
-            String fileName = source.getName();
-            int dotIndex = fileName.lastIndexOf('.');
-            String fileExtension = (dotIndex > 0 && dotIndex < fileName.length() - 1) ?
-                    fileName.substring(dotIndex + 1).toLowerCase() :
-                    "";
-
-            // 设置ContentType，找不到就返回二进制直接下载
-            String contentType = MIME_TYPES.getOrDefault(fileExtension, "application/octet-stream");
-            response.setContentType(contentType);
-        }
-
-
-
-        //检查是否需要生成略缩图
-        if(!StringUtil.isEmpty(type)){
-            File thumbnail = thumbnailService.generateThumbnail(source, type, imageId);
-            if(null != thumbnail && thumbnail.exists()){
-                // 存在略缩图
-                Files.copy(thumbnail.toPath(), response.getOutputStream());
-            }
-        }
-        // 返回原图
-        Files.copy(source.toPath(), response.getOutputStream());
+        // Build the URL, ensuring no leading slashes from the stored path
+        String cleanPath = image.getStoragePath().startsWith(File.separator)
+                ? image.getStoragePath().substring(1)
+                : image.getStoragePath();
+        dto.setUrl("/images-static/" + cleanPath.replace(File.separator, "/"));
+        return dto;
     }
 
     /**
@@ -334,13 +289,17 @@ public class ImageService {
      * @param categoryId    分类id
      * @param page  当前也
      * @param size  每页图片数量
-     * @return Page<Image>
+     * @return Page<ImageDTO>
      */
-    public Page<Image> queryImageByCategoryId(Long categoryId, int page, int size) {
+    public IPage<ImageDTO> queryImageByCategoryId(Long categoryId, int page, int size) {
         Page<Image> imagePage = new Page<>(page, size);
         LambdaQueryWrapper<Image> imageQuery = new LambdaQueryWrapper<>();
         imageQuery.eq(Image::getCategoryId, categoryId);
-        return  imageMapper.selectPage(imagePage, imageQuery);
+        Page<Image> resultPage = imageMapper.selectPage(imagePage, imageQuery);
+
+        // 转换 Page<Image> to Page<ImageDTO>
+        Function<Image, ImageDTO> converter = this::convertToDto;
+        return resultPage.convert(converter);
     }
 
     /**
@@ -398,8 +357,9 @@ public class ImageService {
      * @param size 返回图片数量
      * @return  近上传的图片
      */
-    public List<Image> getRecentUploads(int size){
-        return imageMapper.getRecentUploads(size);
+    public List<ImageDTO> getRecentUploads(int size){
+        List<Image> images = imageMapper.getRecentUploads(size);
+        return images.stream().map(this::convertToDto).collect(Collectors.toList());
     }
 
     @Transactional
@@ -496,7 +456,7 @@ public class ImageService {
      * @param threshold 汉明距离阈值
      * @return  相似图片列表
      */
-    public List<Image> findSimilarImages(Long imageId, int threshold) {
+    public List<ImageDTO> findSimilarImages(Long imageId, int threshold) {
         Image targetImage = imageMapper.selectById(imageId);
         if (targetImage == null || StringUtil.isEmpty(targetImage.getPHash())) {
             return List.of(); // 或者抛出异常，取决于业务需求
@@ -507,9 +467,8 @@ public class ImageService {
 
         return allImages.stream()
                 .filter(img -> !img.getId().equals(imageId) && !StringUtil.isEmpty(img.getPHash())) // 排除自身和没有pHash的图片
-                .filter(img -> {
-                    return hammingDistance(targetPHash, img.getPHash()) <= threshold;
-                })
+                .filter(img -> hammingDistance(targetPHash, img.getPHash()) <= threshold)
+                .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 }

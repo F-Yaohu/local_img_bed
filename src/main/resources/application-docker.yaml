@@ -43,8 +43,8 @@ admin:
 
 image:
   storage:
-    # 这是容器内的图片存储路径，我们会将它映射到主机的一个目录
-    root-path: /data/images
+    # 从环境变量读取容器内的图片存储路径
+    root-path: ${IMAGE_STORAGE_ROOT_PATH:/data/images} # 默认为/data/images
 
 logging:
   level:

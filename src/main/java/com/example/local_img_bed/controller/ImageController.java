@@ -1,6 +1,8 @@
 package com.example.local_img_bed.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.local_img_bed.dto.ImageDTO;
 import com.example.local_img_bed.dto.ImageStatsDto;
 import com.example.local_img_bed.dto.ImageUploadDTO;
 import com.example.local_img_bed.entity.Image;
@@ -48,20 +50,8 @@ public class ImageController {
         return ResponseEntity.noContent().build();
     }
 
-    // 新增图片查看接口
-    @GetMapping(value = "/view/{id}", produces = {MediaType.IMAGE_JPEG_VALUE, MediaType.IMAGE_PNG_VALUE})
-    public void loadImageData(
-            @PathVariable Long id,
-            String path,
-            String type,
-            String dFileName,
-            HttpServletResponse response) throws IOException {
-
-        imageService.loadImageData(id, path, type, dFileName, response);
-    }
-
     @GetMapping("/page/{categoryId}")
-    public Page<Image> getCategoryDetails(
+    public IPage<ImageDTO> getCategoryDetails(
             @PathVariable Long categoryId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size
@@ -75,7 +65,7 @@ public class ImageController {
     }
 
     @GetMapping("/recent")
-    public List<Image> getRecentUploads(int size){
+    public List<ImageDTO> getRecentUploads(@RequestParam(defaultValue = "50") int size){
         return imageService.getRecentUploads(size);
     }
 
@@ -98,10 +88,10 @@ public class ImageController {
     }
 
     @GetMapping("/similar/{imageId}")
-    public ResponseEntity<List<Image>> findSimilarImages(
+    public ResponseEntity<List<ImageDTO>> findSimilarImages(
             @PathVariable Long imageId,
             @RequestParam(defaultValue = "10") int threshold) {
-        List<Image> similarImages = imageService.findSimilarImages(imageId, threshold);
+        List<ImageDTO> similarImages = imageService.findSimilarImages(imageId, threshold);
         return ResponseEntity.ok(similarImages);
     }
 }

@@ -1,5 +1,5 @@
 server:
-  port: 8080 # 容器内使用8080端口，我们将在docker-compose中映射到主机端口
+  port: 8081 # 容器内使用8081端口，我们将在docker-compose中映射到主机端口
 
 spring:
   datasource:

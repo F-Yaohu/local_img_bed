@@ -49,7 +49,7 @@ services:
     container_name: local_img_bed_nginx_proxy
     restart: always
     ports:
-      - "80:80" # 用户访问的唯一入口
+      - "8198:80" # 用户访问的唯一入口, 改为8198避免冲突
     volumes:
       - image_data:/var/www/images:ro # 以只读方式挂载图片卷，供Nginx读取
     depends_on:

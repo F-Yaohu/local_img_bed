@@ -13,11 +13,6 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql # 持久化 MySQL 数据
       - ./mysql-init-scripts:/docker-entrypoint-initdb.d # 挂载初始化脚本
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "local_img_bed_user", "-p${MYSQL_PASSWORD}"]
-      timeout: 20s
-      retries: 10
-      interval: 3s
 
   app:
     build:
@@ -38,8 +33,7 @@ services:
     volumes:
       - image_data:/data/images # 将上传的图片存储在名为 image_data 的数据卷中
     depends_on:
-      mysql:
-        condition: service_healthy
+      - mysql # 确保 mysql 服务在 app 服务之前启动
 
 volumes:
   image_data:

@@ -25,9 +25,8 @@ COPY --from=frontend-builder /app/frontend/build ./src/main/resources/static
 RUN mvn package -DskipTests
 
 # Stage 3: Create the final, minimal runtime image
-FROM eclipse-temurin:17-jre-alpine-3.21
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
-RUN apk add --no-cache libstdc++
 # Copy the executable JAR from the builder stage
 COPY --from=backend-builder /app/target/*.jar app.jar
 # Expose the port the application runs on

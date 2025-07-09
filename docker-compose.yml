@@ -1,4 +1,19 @@
 services:
+  mysql:
+    image: mysql:5.7.40
+    container_name: local_img_bed_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: your_mysql_root_password # 请替换为您的root密码
+      MYSQL_DATABASE: local_img_bed # 数据库名称
+      MYSQL_USER: local_img_bed_user # 数据库用户
+      MYSQL_PASSWORD: your_mysql_password # 数据库密码
+    ports:
+      - "3306:3306" # 将主机的 3306 端口映射到容器的 3306 端口，方便本地连接
+    volumes:
+      - mysql_data:/var/lib/mysql # 持久化 MySQL 数据
+      - ./mysql-init-scripts:/docker-entrypoint-initdb.d # 挂载初始化脚本
+
   app:
     build:
       context: .
@@ -8,14 +23,18 @@ services:
     ports:
       - "8198:8080" # 将主机的 8198 端口映射到容器的 8080 端口
     environment:
-      - DB_URL=${DB_URL} # 从 .env 文件读取数据库 jdbc:mysql://127.0.0.1:3306/local_img_bed?useSSL=false&serverTimezone=Asia/Shanghai
-      - DB_USERNAME=${DB_USERNAME}  # 数据库用户名
-      - DB_PASSWORD=${DB_PASSWORD}  # 数据库密码
+      # 数据库连接信息现在指向 Docker Compose 网络中的 mysql 服务
+      - DB_URL=jdbc:mysql://mysql:3306/local_img_bed?useSSL=false&serverTimezone=Asia/Shanghai
+      - DB_USERNAME=local_img_bed_user
+      - DB_PASSWORD=your_mysql_password
       - JWT_SECRET=${JWT_SECRET}  # JWT密钥，建议长度≥32字符
       - ADMIN_USERNAME=${ADMIN_USERNAME} # 登录页面账号
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}  # 登录页面密码
     volumes:
       - image_data:/data/images # 将上传的图片存储在名为 image_data 的数据卷中
+    depends_on:
+      - mysql # 确保 mysql 服务在 app 服务之前启动
 
 volumes:
   image_data:
+  mysql_data:

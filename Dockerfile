@@ -20,6 +20,6 @@ WORKDIR /app
 # Copy the executable JAR from the builder stage
 COPY --from=backend-builder /app/target/*.jar app.jar
 # Expose the port the application runs on
-EXPOSE 8198
+EXPOSE 8081
 # Run the application and activate the 'docker' profile
 ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=docker"]

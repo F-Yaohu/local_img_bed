@@ -78,7 +78,7 @@ public class SecurityConfig {
                         ).permitAll()
                         // 保持你现有的API权限规则
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/images/view/**").permitAll()
+                        .requestMatchers("/api/images/thumbnail/**").permitAll()
                         .requestMatchers("/api/base/config").permitAll()
                         .requestMatchers("/api/**").hasRole("ADMIN")
                         // 确保所有其他未明确匹配的请求都需要认证

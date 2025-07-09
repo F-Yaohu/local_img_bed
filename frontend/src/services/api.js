@@ -47,7 +47,7 @@ export default {
         return apiClient.delete('/images/batch', { data: ids });
     },
     moveImage(id, newCategoryId) {
-        return apiClient.put(`/images/${id}/move`, {newCategoryId});
+        return apiClient.put(`/images/${id}/move?newCategoryId=${newCategoryId}`);
     },
     getStats() {
         return apiClient.get('/images/stats');

@@ -23,6 +23,8 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
     const [similarImages, setSimilarImages] = useState([]);
     const [showMoveModal, setShowMoveModal] = useState(false);
     const [imageToMove, setImageToMove] = useState(null);
+    const [showMoveConfirm, setShowMoveConfirm] = useState(false);
+    const [moveTargetCategory, setMoveTargetCategory] = useState(null);
 
     // Use selectedImageIds from props, and manage internal state for UI selection
     const [internalSelectedImages, setInternalSelectedImages] = useState(new Set(selectedImageIds));
@@ -81,19 +83,31 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
 
         const originalImages = [...images];
         setImages(images.filter(img => img.id !== imageToDelete.id));
-        setConfirmShow(false);
 
         try {
             await api.deleteImage(imageToDelete.id);
-            toast.success('图片删除成功���');
-            // Also update parent's selected images if the deleted image was selected
-            onSelectedImagesChange(Array.from(selectedImageIds).filter(id => id !== imageToDelete.id));
+            toast.success('图片删除成功！');
+
+            // Only update parent's selected images if the deleted image was part of the internal selection
+            if (internalSelectedImages.has(imageToDelete.id)) {
+                const newSelection = new Set(internalSelectedImages);
+                newSelection.delete(imageToDelete.id);
+                setInternalSelectedImages(newSelection); // Update internal state
+                onSelectedImagesChange(Array.from(newSelection)); // Notify parent
+            }
+
+            // If the deleted image was the one being previewed, close the preview modal
+            if (selectedImage && selectedImage.id === imageToDelete.id) {
+                handleCloseModal();
+            }
+
         } catch (err) {
-            setImages(originalImages);
+            setImages(originalImages); // Revert UI on error
             toast.error('删除图片失败。请再试一次。');
             console.error(err);
         } finally {
             setImageToDelete(null);
+            setConfirmShow(false);
         }
     };
 
@@ -123,19 +137,29 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
         setShowMoveModal(true);
     };
 
-    const handleConfirmMove = async (newCategoryId) => {
-        if (!imageToMove) return;
+    const handleConfirmMove = (selectedCategory) => {
+        if (!imageToMove || !selectedCategory) return;
+
+        setMoveTargetCategory(selectedCategory);
+        setShowMoveModal(false); // Close the category selection modal
+        setShowMoveConfirm(true); // Show the confirmation modal
+    };
+
+    const handleFinalMoveConfirmation = async () => {
+        if (!imageToMove || !moveTargetCategory) return;
+
+        setShowMoveConfirm(false); // Close the confirmation modal
 
         try {
-            await api.moveImage(imageToMove.id, newCategoryId);
-            toast.success(`图片 '${imageToMove.originalName}' 移动成功！`);
+            await api.moveImage(imageToMove.id, moveTargetCategory.id);
+            toast.success(`图片 '${imageToMove.originalName}' 移动到 '${moveTargetCategory.name}' 成功！`);
             // Remove the moved image from the current grid if it's no longer in this category
             if (imageToMove.categoryId === categoryId) { // Only remove if it was in the current category
                 setImages(prevImages => prevImages.filter(img => img.id !== imageToMove.id));
             }
             handleCloseModal(); // Close the preview modal
-            setShowMoveModal(false); // Close the move modal
             setImageToMove(null); // Clear image to move
+            setMoveTargetCategory(null); // Clear target category
         } catch (err) {
             toast.error('移动图片失败。');
             console.error(err);
@@ -441,6 +465,14 @@ function ImageGrid({ categoryId, config, setDeletions, selectedImageIds, onSelec
                 onConfirm={handleConfirmBatchDelete}
                 title="确认批量删除"
                 message={`您确定要删除选中的 ${internalSelectedImages.size} 张图片吗？此操作无法撤消。`}
+            />
+
+            <ConfirmModal
+                show={showMoveConfirm}
+                onHide={() => setShowMoveConfirm(false)}
+                onConfirm={handleFinalMoveConfirmation}
+                title="确认移动图片"
+                message={selectedImage ? `您确定要将图片 '${selectedImage.originalName}' 移动到分类 '${moveTargetCategory?.name || ''}' 吗？` : '您确定要移动此图片吗？'}
             />
 
             <SimilarImagesModal

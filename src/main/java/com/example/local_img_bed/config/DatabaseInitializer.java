@@ -30,10 +30,22 @@ public class DatabaseInitializer implements CommandLineRunner {
             logger.info("Database not initialized. Creating schema...");
             // Read SQL script from classpath
             ClassPathResource resource = new ClassPathResource("db/init/initial_schema.sql");
-            String sql = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
+            String sqlScript = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
 
-            // Execute SQL script
-            jdbcTemplate.execute(sql);
+            // Split the script into individual statements
+            String[] statements = sqlScript.split(";");
+
+            for (String statement : statements) {
+                String trimmedStatement = statement.trim();
+                if (!trimmedStatement.isEmpty() && !trimmedStatement.startsWith("--") && !trimmedStatement.startsWith("/*")) {
+                    try {
+                        jdbcTemplate.execute(trimmedStatement);
+                    } catch (Exception ex) {
+                        logger.severe("Error executing SQL statement: " + trimmedStatement + " - " + ex.getMessage());
+                        throw ex; // Re-throw to stop application startup if schema creation fails
+                    }
+                }
+            }
             logger.info("Database schema created successfully.");
         }
     }

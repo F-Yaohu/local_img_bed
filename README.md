@@ -91,7 +91,7 @@
         ports:
           - "13336:3306" # MySQL端口映射，左侧为宿主机端口，右侧为容器端口，可修改宿主机端口
         volumes:
-          - mysql_data:/var/lib/mysql
+          - ./data/local-img-bed/mysql:/var/lib/mysql # 持久化MySQL数据到宿主机当前目录下的data/mysql文件夹，如果需要，请修改为其他地址，默认为 ./data/local-img-bed/mysql
 
       app: # 后端服务
         image: zy1234567/local_img_bed-app:latest
@@ -106,7 +106,7 @@
           - ADMIN_PASSWORD=${ADMIN_PASSWORD} # 管理员登录密码，请修改
           - IMAGE_STORAGE_ROOT_PATH=/data/images # 告知Spring Boot容器内的图片路径，通常无需修改
         volumes:
-          - image_data:/data/images # 将图片存储在Docker卷中，宿主机路径在volumes中定义
+          - ./data/local-img-bed/images:/data/images # 将图片存储在宿主机当前目录下的data/images文件夹，如果需要，请修改为自己本地存储磁盘，默认为 ./data/local-img-bed/images
         depends_on:
           - mysql
 
@@ -124,14 +124,10 @@
         ports:
           - "8198:80" # Nginx端口映射，左侧为宿主机端口，右侧为容器端口，可修改宿主机端口以避免冲突
         volumes:
-          - image_data:/var/www/images:ro # 以只读方式挂载图片卷，供Nginx读取
+          - ./data/local-img-bed/images:/var/www/images:ro # 以只读方式挂载图片卷，供Nginx读取，路径与app服务保持一致
         depends_on:
           - app
           - frontend
-
-    volumes:
-      image_data:
-      mysql_data:
     ```
 
 3.  **配置环境变量**
@@ -148,7 +144,7 @@
     **重要提示：** 请务必将 `your_...` 替换为你的实际值。
 
 4.  **启动服务**
-    在 `docker-compose.prod.yml` 文件所在的目录下���行：
+    在 `docker-compose.prod.yml` 文件所在的目录下行：
     ```bash
     docker-compose -f docker-compose.prod.yml up -d
     ```

@@ -134,7 +134,7 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <version>10.10.0</version> <!-- Explicitly set version for MySQL 5.7 compatibility -->
+            <version>9.22.3</version> <!-- 支持 Java 17 的最新稳定版 -->
         </dependency>
 
     </dependencies>

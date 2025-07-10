@@ -20,11 +20,11 @@
 
 ## 📸 预览
 
-| 主界面                                                                                                                                                  | 分类管理                                                                      |
-|------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|
+| 主页面                                                                                                                                                  | 分类管理 |
+|------------------------------------------------------------------------------------------------------------------------------------------------------|---|
 | ![主界面预览](https://raw.githubusercontent.com/F-Yaohu/local_img_bed/refs/heads/master/%E9%A2%84%E8%A7%88%E5%9B%BE/2577a4f481980a4570423e413e840869.png) | ![分类管理预览](https://raw.githubusercontent.com/F-Yaohu/local_img_bed/refs/heads/master/%E9%A2%84%E8%A7%88%E5%9B%BE/13aaac6c010242f213e63ded3822a830.png) |
-| **系统设置**                                                                                                                                             | **图片预览**                                                                  |
-| ![系统设置](https://raw.githubusercontent.com/F-Yaohu/local_img_bed/refs/heads/master/%E9%A2%84%E8%A7%88%E5%9B%BE/65d51195e84fd97f711e931d397b4a9f.png)                                                                                   | ![图片预览](https://raw.githubusercontent.com/F-Yaohu/local_img_bed/refs/heads/master/%E9%A2%84%E8%A7%88%E5%9B%BE/623f4e675a14fbae68ffe2f61dc6faaf.png)      |
+| **系统设置**                                                                                                                                             | **图片预览** |
+| ![系统设置](https://raw.githubusercontent.com/F-Yaohu/local_img_bed/refs/heads/master/%E9%A2%84%E8%A7%88%E5%9B%BE/65d51195e84fd97f711e931d397b4a9f.png)  | ![图片预览](https://raw.githubusercontent.com/F-Yaohu/local_img_bed/refs/heads/master/%E9%A2%84%E8%A7%88%E5%9B%BE/623f4e675a14fbae68ffe2f61dc6faaf.png) |
 
 
 ## 🛠️ 技术栈
@@ -47,9 +47,9 @@
 
 你可以选择本地运行，也可以使用 Docker Compose 一键部署。
 
-### 1. Docker Compose (推荐)
+### 1. Docker Compose (本地构建)
 
-这是最简单的启动方式，请确保你已经安装了 Docker 和 Docker Compose。
+这是最简单的启动方式，适用于希望本地构建镜像的用户。请确保你已经安装了 Docker 和 Docker Compose。
 
 1.  **修改配置**
     - 修改 `docker-compose.yml` 中的 `JWT_SECRET` 、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD`。
@@ -65,7 +65,108 @@
     - **前端**: `http://localhost:8080`
     - **后端 API**: `http://localhost:8080/api`
 
-### 2. 本地开发环境运行
+### 2. Docker Compose (生产环境/预构建镜像)
+
+此方式适用于希望直接拉取预构建镜像（后端 `app` 和前端 `frontend`）的用户，无需本地构建。Nginx 镜像将会在本地构建，因为它包含了自定义配置。
+
+1.  **前提条件**
+    请确保你已经安装了 Docker 和 Docker Compose。
+
+2.  **创建 `docker-compose.prod.yml` 文件**
+    在你的部署目录下创建一个名为 `docker-compose.prod.yml` 的文件，并将以下内容复制粘贴到文件中：
+
+    ```yaml
+    version: '3.8'
+
+    services:
+      mysql:
+        image: mysql:5.7.40
+        container_name: local_img_bed_mysql
+        restart: always
+        environment:
+          MYSQL_ROOT_PASSWORD: your_mysql_root_password # 你的数据库root密码
+          MYSQL_DATABASE: local_img_bed # 数据库名
+          MYSQL_USER: local_img_bed_user  # 数据库用户
+          MYSQL_PASSWORD: your_mysql_password # 数据库密码
+        ports:
+          - "13336:3306" # MySQL端口映射，左侧为宿主机端口，右侧为容器端口，可修改宿主机端口
+        volumes:
+          - mysql_data:/var/lib/mysql
+
+      app: # 后端服务
+        image: zy1234567/local_img_bed-app:latest
+        container_name: local_img_bed_app
+        restart: always
+        environment:
+          - DB_URL=jdbc:mysql://mysql:3306/local_img_bed?useSSL=false&serverTimezone=Asia/Shanghai # 数据库连接URL，如果MySQL服务名或端口有变动，请修改
+          - DB_USERNAME=local_img_bed_user # 数据库用户，和上面数据库配置保持一致
+          - DB_PASSWORD=your_mysql_password # 数据库密码，和上面数据库配置保持一致
+          - JWT_SECRET=${JWT_SECRET}  # JWT密钥，建议长度≥32字符，请修改为自己的
+          - ADMIN_USERNAME=${ADMIN_USERNAME} # 管理员登录账号，请修改
+          - ADMIN_PASSWORD=${ADMIN_PASSWORD} # 管理员登录密码，请修改
+          - IMAGE_STORAGE_ROOT_PATH=/data/images # 告知Spring Boot容器内的图片路径，通常无需修改
+        volumes:
+          - image_data:/data/images # 将图片存储在Docker卷中，宿主机路径在volumes中定义
+        depends_on:
+          - mysql
+
+      frontend: # 前端服务
+        image: zy1234567/local_img_bed-frontend:latest
+        container_name: local_img_bed_frontend
+        restart: always
+
+      nginx-proxy: # nginx
+        build:
+          context: ./nginx
+          dockerfile: Dockerfile
+        container_name: local_img_bed_nginx_proxy
+        restart: always
+        ports:
+          - "8198:80" # Nginx端口映射，左侧为宿主机端口，右侧为容器端口，可修改宿主机端口以避免冲突
+        volumes:
+          - image_data:/var/www/images:ro # 以只读方式挂载图片卷，供Nginx读取
+        depends_on:
+          - app
+          - frontend
+
+    volumes:
+      image_data:
+      mysql_data:
+    ```
+
+3.  **配置环境变量**
+    在 `docker-compose.prod.yml` 所在的目录下，创建一个 `.env` 文件，并设置以下环境变量：
+    ```
+    MYSQL_ROOT_PASSWORD=your_mysql_root_password # 你的数据库root密码
+    MYSQL_DATABASE=local_img_bed # 数据库名
+    MYSQL_USER=local_img_bed_user  # 数据库用户
+    MYSQL_PASSWORD=your_mysql_password # 数据库密码
+    JWT_SECRET=your_jwt_secret_key # JWT密钥，建议长度≥32字符
+    ADMIN_USERNAME=your_admin_username # 管理员登录账号
+    ADMIN_PASSWORD=your_admin_password # 管理员登录密码
+    ```
+    **重要提示：** 请务必将 `your_...` 替换为你的实际值。
+
+4.  **启动服务**
+    在 `docker-compose.prod.yml` 文件所在的目录下���行：
+    ```bash
+    docker-compose -f docker-compose.prod.yml up -d
+    ```
+    此命令会拉取 `app` 和 `frontend` 的预构建镜像，并在本地构建 `nginx-proxy` 镜像。
+
+5.  **访问应用**
+    - **前端**: `http://localhost:8198`
+    - **后端 API**: `http://localhost:8198/api`
+    （请注意，端口已更改为 `8198` 以避免与默认 `8080` 冲突，这在 `docker-compose.prod.yml` 中已配置）
+
+6.  **数据库初始化注意事项**
+    后端 `app` 服务会在首次启动时自动初始化数据库表结构。如果需要重新初始化数据库（例如，从头开始），请在启动服务之前删除 `mysql_data` Docker 卷：
+    ```bash
+    docker-compose -f docker-compose.prod.yml down -v
+    ```
+    然后再次运行。
+
+### 3. 本地开发环境运行
 
 **环境要求:**
 - Java 17+
@@ -124,7 +225,8 @@
 │   └── resources/
 │       ├── mapper/        # MyBatis XML
 │       └── application.yaml # 配置文件
-├── docker-compose.yml     # Docker 编排文件
+├── docker-compose.yml     # Docker 编排文件 (本地构建)
+├── docker-compose.prod.yml # Docker 编排文件 (生产环境/预构建镜像)
 ├── Dockerfile             # 后端 Dockerfile
 └── nginx/                 # Nginx 配置和 Dockerfile
 ```

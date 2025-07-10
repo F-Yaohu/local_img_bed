@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:5.7.40
+    container_name: local_img_bed_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: your_mysql_root_password # 你的数据库root密码
+      MYSQL_DATABASE: local_img_bed # 数据库名
+      MYSQL_USER: local_img_bed_user  # 数据库用户
+      MYSQL_PASSWORD: your_mysql_password # 数据库密码
+    ports:
+      - "13336:3306" # MySQL端口映射，左侧为宿主机端口，右侧为容器端口，可修改宿主机端口
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  app: # 后端服务
+    image: zy1234567/local_img_bed-app:latest
+    container_name: local_img_bed_app
+    restart: always
+    environment:
+      - DB_URL=jdbc:mysql://mysql:3306/local_img_bed?useSSL=false&serverTimezone=Asia/Shanghai # 数据库连接URL，如果MySQL服务名或端口有变动，请修改
+      - DB_USERNAME=local_img_bed_user # 数据库用户，和上面数据库配置保持一致
+      - DB_PASSWORD=your_mysql_password # 数据库密码，和上面数据库配置保持一致
+      - JWT_SECRET=${JWT_SECRET}  # JWT密钥，建议长度≥32字符，请修改为自己的
+      - ADMIN_USERNAME=${ADMIN_USERNAME} # 管理员登录账号，请修改
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD} # 管理员登录密码，请修改
+      - IMAGE_STORAGE_ROOT_PATH=/data/images # 告知Spring Boot容器内的图片路径，通常无需修改
+    volumes:
+      - image_data:/data/images # 将图片存储在Docker卷中，宿主机路径在volumes中定义
+    depends_on:
+      - mysql
+
+  frontend: # 前端服务
+    image: zy1234567/local_img_bed-frontend:latest
+    container_name: local_img_bed_frontend
+    restart: always
+
+  nginx-proxy: # nginx
+    image: zy1234567/local_img_bed-nginx-proxy:latest # 使用已经打包好的nginx是因为里面添加了接口转发和图片查看的的配置文件，不用手动配置
+    container_name: local_img_bed_nginx_proxy
+    restart: always
+    ports:
+      - "8198:80" # Nginx端口映射，左侧为宿主机端口，右侧为容器端口，可修改宿主机端口以避免冲突
+    volumes:
+      - image_data:/var/www/images:ro # 以只读方式挂载图片卷，供Nginx读取
+    depends_on:
+      - app
+      - frontend
+
+volumes:
+  image_data:
+  mysql_data:

@@ -79,7 +79,7 @@
     version: '3.8'
 
     services:
-      mysql:
+      mysql: # 根据自己的需求，可以使用本地自己的mysql ≥ 5.7.40，该配置可以去掉
         image: mysql:5.7.40
         container_name: local_img_bed_mysql
         restart: always

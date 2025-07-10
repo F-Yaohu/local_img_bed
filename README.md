@@ -116,9 +116,7 @@
         restart: always
 
       nginx-proxy: # nginx
-        build:
-          context: ./nginx
-          dockerfile: Dockerfile
+        image: zy1234567/local_img_bed-nginx-proxy:latest # 使用已经打包好的nginx是因为里面添加了接口转发和图片查看的的配置文件，不用手动配置
         container_name: local_img_bed_nginx_proxy
         restart: always
         ports:

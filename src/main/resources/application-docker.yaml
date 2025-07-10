@@ -20,14 +20,7 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
-mybatis-plus:
-  mapper-locations: classpath:/mapper/*.xml
-  type-aliases-package: com.example.gallery.entity
-  configuration:
-    map-underscore-to-camel-case: true
-  global-config:
-    db-config:
-      id-type: auto
+
 
 ok:
   http:

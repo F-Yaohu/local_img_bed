@@ -4,7 +4,7 @@
 ![Java](https://img.shields.io/badge/Java-17-blue)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.1-brightgreen)
 ![React](https://img.shields.io/badge/React-18.3.1-blue)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-orange)
+![MySQL](https://img.shields.io/badge/MySQL-5.7.40-orange)
 ![Docker](https://img.shields.io/badge/Docker-blue)
 
 这是一个功能完善的个人图床应用，基于 Spring Boot 和 React 技术栈构建。它允许用户轻松上传、管理和分类自己的图片资源，并提供稳定可靠的图片外链服务。项目支持使用 Docker 进行一键部署，极大简化了环境配置的复杂性。
@@ -18,11 +18,20 @@
 - **响应式设计**：前端界面适配不同尺寸的设备。
 - **容器化部署**：提供 `Dockerfile` 和 `docker-compose.yml`，支持一键部署。
 
+## 📸 预览
+
+| 主界面                                                                                                                                                  | 分类管理                                                                      |
+|------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|
+| ![主界面预览](https://raw.githubusercontent.com/F-Yaohu/local_img_bed/refs/heads/master/%E9%A2%84%E8%A7%88%E5%9B%BE/2577a4f481980a4570423e413e840869.png) | ![分类管理预览](https://raw.githubusercontent.com/F-Yaohu/local_img_bed/refs/heads/master/%E9%A2%84%E8%A7%88%E5%9B%BE/13aaac6c010242f213e63ded3822a830.png) |
+| **系统设置**                                                                                                                                             | **图片预览**                                                                  |
+| ![系统设置](https://raw.githubusercontent.com/F-Yaohu/local_img_bed/refs/heads/master/%E9%A2%84%E8%A7%88%E5%9B%BE/65d51195e84fd97f711e931d397b4a9f.png)                                                                                   | ![图片预览](https://raw.githubusercontent.com/F-Yaohu/local_img_bed/refs/heads/master/%E9%A2%84%E8%A7%88%E5%9B%BE/623f4e675a14fbae68ffe2f61dc6faaf.png)      |
+
+
 ## 🛠️ 技术栈
 
 - **后端**
   - **核心框架**: Spring Boot 3.3.1
-  - **数据库**: MySQL 8.0
+  - **数据库**: MySQL 5.7.40
   - **ORM**: MyBatis-Plus
   - **安全**: Spring Security, JWT
   - **HTTP客户端**: OkHttp
